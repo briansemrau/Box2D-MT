@@ -1,28 +1,36 @@
-/*
-* Copyright (c) 2006-2009 Erin Catto http://www.box2d.org
-*
-* This software is provided 'as-is', without any express or implied
-* warranty.  In no event will the authors be held liable for any damages
-* arising from the use of this software.
-* Permission is granted to anyone to use this software for any purpose,
-* including commercial applications, and to alter it and redistribute it
-* freely, subject to the following restrictions:
-* 1. The origin of this software must not be misrepresented; you must not
-* claim that you wrote the original software. If you use this software
-* in a product, an acknowledgment in the product documentation would be
-* appreciated but is not required.
-* 2. Altered source versions must be plainly marked as such, and must not be
-* misrepresented as being the original software.
-* 3. This notice may not be removed or altered from any source distribution.
-*/
+// MIT License
 
-#include "Box2D/Common/b2BlockAllocator.h"
+// Copyright (c) 2019 Erin Catto
+
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
+#include "box2d/b2_block_allocator.h"
 #include <limits.h>
 #include <string.h>
 #include <stddef.h>
-#include <mutex>
 
-int32 b2BlockAllocator::s_blockSizes[b2_blockSizes] =
+static const int32 b2_chunkSize = 16 * 1024;
+static const int32 b2_maxBlockSize = 640;
+static const int32 b2_chunkArrayIncrement = 128;
+
+// These are the supported object sizes. Actual allocations are rounded up the next size.
+static const int32 b2_blockSizes[b2_blockSizeCount] =
 {
 	16,		// 0
 	32,		// 1
@@ -41,7 +49,33 @@ int32 b2BlockAllocator::s_blockSizes[b2_blockSizes] =
 	896,	// 14
 	1152,	// 15
 };
-uint8 b2BlockAllocator::s_blockSizeLookup[b2_maxBlockSize + 1];
+
+// This maps an arbitrary allocation size to a suitable slot in b2_blockSizes.
+struct b2SizeMap
+{
+	b2SizeMap()
+	{
+		int32 j = 0;
+		values[0] = 0;
+		for (int32 i = 1; i <= b2_maxBlockSize; ++i)
+		{
+			b2Assert(j < b2_blockSizeCount);
+			if (i <= b2_blockSizes[j])
+			{
+				values[i] = (uint8)j;
+			}
+			else
+			{
+				++j;
+				values[i] = (uint8)j;
+			}
+		}
+	}
+
+	uint8 values[b2_maxBlockSize + 1];
+};
+
+static const b2SizeMap b2_sizeMap;
 
 struct b2Chunk
 {
@@ -54,37 +88,14 @@ struct b2Block
 	b2Block* next;
 };
 
-bool b2BlockAllocator::InitializeBlockSizeLookup()
-{
-	int32 j = 0;
-	for (int32 i = 1; i <= b2_maxBlockSize; ++i)
-	{
-		b2Assert(j < b2_blockSizes);
-		if (i <= s_blockSizes[j])
-		{
-			s_blockSizeLookup[i] = (uint8)j;
-		}
-		else
-		{
-			++j;
-			s_blockSizeLookup[i] = (uint8)j;
-		}
-	}
-
-	return true;
-}
-
 b2BlockAllocator::b2BlockAllocator()
 {
-	static std::once_flag s_blockSizeLookupInitFlag;
-	std::call_once(s_blockSizeLookupInitFlag, b2BlockAllocator::InitializeBlockSizeLookup);
-
-	b2Assert(b2_blockSizes < UCHAR_MAX);
+	b2Assert(b2_blockSizeCount < UCHAR_MAX);
 
 	m_chunkSpace = b2_chunkArrayIncrement;
 	m_chunkCount = 0;
 	m_chunks = (b2Chunk*)b2Alloc(m_chunkSpace * sizeof(b2Chunk));
-
+	
 	memset(m_chunks, 0, m_chunkSpace * sizeof(b2Chunk));
 	memset(m_freeLists, 0, sizeof(m_freeLists));
 }
@@ -102,7 +113,9 @@ b2BlockAllocator::~b2BlockAllocator()
 void* b2BlockAllocator::Allocate(int32 size)
 {
 	if (size == 0)
+	{
 		return nullptr;
+	}
 
 	b2Assert(0 < size);
 
@@ -111,8 +124,8 @@ void* b2BlockAllocator::Allocate(int32 size)
 		return b2Alloc(size);
 	}
 
-	int32 index = s_blockSizeLookup[size];
-	b2Assert(0 <= index && index < b2_blockSizes);
+	int32 index = b2_sizeMap.values[size];
+	b2Assert(0 <= index && index < b2_blockSizeCount);
 
 	if (m_freeLists[index])
 	{
@@ -137,7 +150,7 @@ void* b2BlockAllocator::Allocate(int32 size)
 #if defined(_DEBUG)
 		memset(chunk->blocks, 0xcd, b2_chunkSize);
 #endif
-		int32 blockSize = s_blockSizes[index];
+		int32 blockSize = b2_blockSizes[index];
 		chunk->blockSize = blockSize;
 		int32 blockCount = b2_chunkSize / blockSize;
 		b2Assert(blockCount * blockSize <= b2_chunkSize);
@@ -172,12 +185,12 @@ void b2BlockAllocator::Free(void* p, int32 size)
 		return;
 	}
 
-	int32 index = s_blockSizeLookup[size];
-	b2Assert(0 <= index && index < b2_blockSizes);
+	int32 index = b2_sizeMap.values[size];
+	b2Assert(0 <= index && index < b2_blockSizeCount);
 
-#ifdef _DEBUG
+#if defined(_DEBUG)
 	// Verify the memory address and size is valid.
-	int32 blockSize = s_blockSizes[index];
+	int32 blockSize = b2_blockSizes[index];
 	bool found = false;
 	for (int32 i = 0; i < m_chunkCount; ++i)
 	{
@@ -215,6 +228,5 @@ void b2BlockAllocator::Clear()
 
 	m_chunkCount = 0;
 	memset(m_chunks, 0, m_chunkSpace * sizeof(b2Chunk));
-
 	memset(m_freeLists, 0, sizeof(m_freeLists));
 }

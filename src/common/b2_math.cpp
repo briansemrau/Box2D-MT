@@ -1,22 +1,26 @@
-/*
-* Copyright (c) 2007-2009 Erin Catto http://www.box2d.org
-*
-* This software is provided 'as-is', without any express or implied
-* warranty.  In no event will the authors be held liable for any damages
-* arising from the use of this software.
-* Permission is granted to anyone to use this software for any purpose,
-* including commercial applications, and to alter it and redistribute it
-* freely, subject to the following restrictions:
-* 1. The origin of this software must not be misrepresented; you must not
-* claim that you wrote the original software. If you use this software
-* in a product, an acknowledgment in the product documentation would be
-* appreciated but is not required.
-* 2. Altered source versions must be plainly marked as such, and must not be
-* misrepresented as being the original software.
-* 3. This notice may not be removed or altered from any source distribution.
-*/
+// MIT License
 
-#include "Box2D/Common/b2Math.h"
+// Copyright (c) 2019 Erin Catto
+
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
+#include "box2d/b2_math.h"
 
 const b2Vec2 b2Vec2_zero(0.0f, 0.0f);
 
@@ -24,7 +28,7 @@ const b2Vec2 b2Vec2_zero(0.0f, 0.0f);
 /// than computing the inverse in one-shot cases.
 b2Vec3 b2Mat33::Solve33(const b2Vec3& b) const
 {
-	float32 det = b2Dot(ex, b2Cross(ey, ez));
+	float det = b2Dot(ex, b2Cross(ey, ez));
 	if (det != 0.0f)
 	{
 		det = 1.0f / det;
@@ -40,8 +44,8 @@ b2Vec3 b2Mat33::Solve33(const b2Vec3& b) const
 /// than computing the inverse in one-shot cases.
 b2Vec2 b2Mat33::Solve22(const b2Vec2& b) const
 {
-	float32 a11 = ex.x, a12 = ey.x, a21 = ex.y, a22 = ey.y;
-	float32 det = a11 * a22 - a12 * a21;
+	float a11 = ex.x, a12 = ey.x, a21 = ex.y, a22 = ey.y;
+	float det = a11 * a22 - a12 * a21;
 	if (det != 0.0f)
 	{
 		det = 1.0f / det;
@@ -55,8 +59,8 @@ b2Vec2 b2Mat33::Solve22(const b2Vec2& b) const
 ///
 void b2Mat33::GetInverse22(b2Mat33* M) const
 {
-	float32 a = ex.x, b = ey.x, c = ex.y, d = ey.y;
-	float32 det = a * d - b * c;
+	float a = ex.x, b = ey.x, c = ex.y, d = ey.y;
+	float det = a * d - b * c;
 	if (det != 0.0f)
 	{
 		det = 1.0f / det;
@@ -70,15 +74,15 @@ void b2Mat33::GetInverse22(b2Mat33* M) const
 /// Returns the zero matrix if singular.
 void b2Mat33::GetSymInverse33(b2Mat33* M) const
 {
-	float32 det = b2Dot(ex, b2Cross(ey, ez));
+	float det = b2Dot(ex, b2Cross(ey, ez));
 	if (det != 0.0f)
 	{
 		det = 1.0f / det;
 	}
 
-	float32 a11 = ex.x, a12 = ey.x, a13 = ez.x;
-	float32 a22 = ey.y, a23 = ez.y;
-	float32 a33 = ez.z;
+	float a11 = ex.x, a12 = ey.x, a13 = ez.x;
+	float a22 = ey.y, a23 = ez.y;
+	float a33 = ez.z;
 
 	M->ex.x = det * (a22 * a33 - a23 * a23);
 	M->ex.y = det * (a13 * a23 - a12 * a33);
