@@ -1,30 +1,30 @@
-/*
-* Copyright (c) 2006-2009 Erin Catto http://www.box2d.org
-* Copyright (c) 2015 Justin Hoffman https://github.com/jhoffman0x/Box2D-MT
-*
-* This software is provided 'as-is', without any express or implied
-* warranty.  In no event will the authors be held liable for any damages
-* arising from the use of this software.
-* Permission is granted to anyone to use this software for any purpose,
-* including commercial applications, and to alter it and redistribute it
-* freely, subject to the following restrictions:
-* 1. The origin of this software must not be misrepresented; you must not
-* claim that you wrote the original software. If you use this software
-* in a product, an acknowledgment in the product documentation would be
-* appreciated but is not required.
-* 2. Altered source versions must be plainly marked as such, and must not be
-* misrepresented as being the original software.
-* 3. This notice may not be removed or altered from any source distribution.
-*/
+// MIT License
+
+// Copyright (c) 2019 Erin Catto
+
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
 
 #ifndef B2_CONTACT_MANAGER_H
 #define B2_CONTACT_MANAGER_H
 
-#include "Box2D/Collision/b2BroadPhase.h"
-#include "Box2D/Common/b2GrowableArray.h"
-#include "Box2D/Dynamics/Contacts/b2Contact.h"
-#include "Box2D/Dynamics/b2WorldCallbacks.h"
-#include "Box2D/Dynamics/b2TimeStep.h"
+#include "b2_api.h"
+#include "b2_broad_phase.h"
 
 class b2BlockAllocator;
 class b2Body;
@@ -35,7 +35,7 @@ class b2TaskExecutor;
 class b2TaskGroup;
 struct b2FixtureProxy;
 
-struct b2DeferredContactCreate
+struct B2_API b2DeferredContactCreate
 {
 	b2Fixture* fixtureA;
 	b2Fixture* fixtureB;
@@ -44,20 +44,20 @@ struct b2DeferredContactCreate
 	b2ContactProxyIds proxyIds;
 };
 
-struct b2DeferredMoveProxy
+struct B2_API b2DeferredMoveProxy
 {
 	b2AABB aabb;
 	b2Vec2 displacement;
 	int32 proxyId;
 };
 
-struct b2DeferredPreSolve
+struct B2_API b2DeferredPreSolve
 {
 	b2Contact* contact;
 	b2Manifold oldManifold;
 };
 
-struct b2DeferredPostSolve
+struct B2_API b2DeferredPostSolve
 {
 	b2Contact* contact;
 	b2ContactImpulse impulse;
@@ -70,7 +70,7 @@ bool b2DeferredMoveProxyLessThan(const b2DeferredMoveProxy& l, const b2DeferredM
 bool b2DeferredPreSolveLessThan(const b2DeferredPreSolve& l, const b2DeferredPreSolve& r);
 bool b2DeferredPostSolveLessThan(const b2DeferredPostSolve& l, const b2DeferredPostSolve& r);
 
-struct b2ContactManagerPerThreadData
+struct B2_API b2ContactManagerPerThreadData
 {
 	b2GrowableArray<b2Contact*> m_beginContacts;
 	b2GrowableArray<b2Contact*> m_endContacts;
@@ -86,7 +86,7 @@ struct b2ContactManagerPerThreadData
 };
 
 // Delegate of b2World.
-class b2ContactManager
+class B2_API b2ContactManager
 {
 public:
 	b2ContactManager();

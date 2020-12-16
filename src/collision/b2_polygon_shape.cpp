@@ -33,7 +33,7 @@ b2Shape* b2PolygonShape::Clone(b2BlockAllocator* allocator) const
 	return clone;
 }
 
-void b2PolygonShape::SetAsBox(float32 hx, float32 hy)
+void b2PolygonShape::SetAsBox(float hx, float hy)
 {
 	m_count = 4;
 	m_vertices[0].Set(-hx, -hy);
