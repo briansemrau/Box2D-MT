@@ -1,22 +1,28 @@
-/*
-* Copyright (c) 2006-2009 Erin Catto http://www.box2d.org
-*
-* This software is provided 'as-is', without any express or implied
-* warranty.  In no event will the authors be held liable for any damages
-* arising from the use of this software.
-* Permission is granted to anyone to use this software for any purpose,
-* including commercial applications, and to alter it and redistribute it
-* freely, subject to the following restrictions:
-* 1. The origin of this software must not be misrepresented; you must not
-* claim that you wrote the original software. If you use this software
-* in a product, an acknowledgment in the product documentation would be
-* appreciated but is not required.
-* 2. Altered source versions must be plainly marked as such, and must not be
-* misrepresented as being the original software.
-* 3. This notice may not be removed or altered from any source distribution.
-*/
+// MIT License
 
-#include "Box2D/Collision/Shapes/b2CircleShape.h"
+// Copyright (c) 2019 Erin Catto
+
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
+#include "box2d/b2_circle_shape.h"
+#include "box2d/b2_block_allocator.h"
+
 #include <new>
 
 b2Shape* b2CircleShape::Clone(b2BlockAllocator* allocator) const
@@ -50,13 +56,13 @@ bool b2CircleShape::RayCast(b2RayCastOutput* output, const b2RayCastInput& input
 
 	b2Vec2 position = transform.p + b2Mul(transform.q, m_p);
 	b2Vec2 s = input.p1 - position;
-	float32 b = b2Dot(s, s) - m_radius * m_radius;
+	float b = b2Dot(s, s) - m_radius * m_radius;
 
 	// Solve quadratic equation.
 	b2Vec2 r = input.p2 - input.p1;
-	float32 c =  b2Dot(s, r);
-	float32 rr = b2Dot(r, r);
-	float32 sigma = c * c - rr * b;
+	float c =  b2Dot(s, r);
+	float rr = b2Dot(r, r);
+	float sigma = c * c - rr * b;
 
 	// Check for negative discriminant and short segment.
 	if (sigma < 0.0f || rr < b2_epsilon)
@@ -65,7 +71,7 @@ bool b2CircleShape::RayCast(b2RayCastOutput* output, const b2RayCastInput& input
 	}
 
 	// Find the point of intersection of the line with the circle.
-	float32 a = -(c + b2Sqrt(sigma));
+	float a = -(c + b2Sqrt(sigma));
 
 	// Is the intersection point on the segment?
 	if (0.0f <= a && a <= input.maxFraction * rr)
@@ -89,7 +95,7 @@ void b2CircleShape::ComputeAABB(b2AABB* aabb, const b2Transform& transform, int3
 	aabb->upperBound.Set(p.x + m_radius, p.y + m_radius);
 }
 
-void b2CircleShape::ComputeMass(b2MassData* massData, float32 density) const
+void b2CircleShape::ComputeMass(b2MassData* massData, float density) const
 {
 	massData->mass = density * b2_pi * m_radius * m_radius;
 	massData->center = m_p;

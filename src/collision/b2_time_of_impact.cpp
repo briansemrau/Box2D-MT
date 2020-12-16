@@ -1,35 +1,37 @@
-/*
-* Copyright (c) 2007-2009 Erin Catto http://www.box2d.org
-*
-* This software is provided 'as-is', without any express or implied
-* warranty.  In no event will the authors be held liable for any damages
-* arising from the use of this software.
-* Permission is granted to anyone to use this software for any purpose,
-* including commercial applications, and to alter it and redistribute it
-* freely, subject to the following restrictions:
-* 1. The origin of this software must not be misrepresented; you must not
-* claim that you wrote the original software. If you use this software
-* in a product, an acknowledgment in the product documentation would be
-* appreciated but is not required.
-* 2. Altered source versions must be plainly marked as such, and must not be
-* misrepresented as being the original software.
-* 3. This notice may not be removed or altered from any source distribution.
-*/
+// MIT License
 
-#include "Box2D/Collision/b2Collision.h"
-#include "Box2D/Collision/b2Distance.h"
-#include "Box2D/Collision/b2TimeOfImpact.h"
-#include "Box2D/Collision/Shapes/b2CircleShape.h"
-#include "Box2D/Collision/Shapes/b2PolygonShape.h"
-#include "Box2D/Common/b2Timer.h"
+// Copyright (c) 2019 Erin Catto
+
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
+#include "box2d/b2_collision.h"
+#include "box2d/b2_distance.h"
+#include "box2d/b2_circle_shape.h"
+#include "box2d/b2_polygon_shape.h"
+#include "box2d/b2_time_of_impact.h"
+#include "box2d/b2_timer.h"
 
 #include <stdio.h>
 
-#if b2_enableGlobalStats
-float32 b2_toiTime, b2_toiMaxTime;
-int32 b2_toiCalls, b2_toiIters, b2_toiMaxIters;
-int32 b2_toiRootIters, b2_toiMaxRootIters;
-#endif
+B2_API float b2_toiTime, b2_toiMaxTime;
+B2_API int32 b2_toiCalls, b2_toiIters, b2_toiMaxIters;
+B2_API int32 b2_toiRootIters, b2_toiMaxRootIters;
 
 //
 struct b2SeparationFunction
@@ -43,10 +45,10 @@ struct b2SeparationFunction
 
 	// TODO_ERIN might not need to return the separation
 
-	float32 Initialize(const b2SimplexCache* cache,
+	float Initialize(const b2SimplexCache* cache,
 		const b2DistanceProxy* proxyA, const b2Sweep& sweepA,
 		const b2DistanceProxy* proxyB, const b2Sweep& sweepB,
-		float32 t1)
+		float t1)
 	{
 		m_proxyA = proxyA;
 		m_proxyB = proxyB;
@@ -68,7 +70,7 @@ struct b2SeparationFunction
 			b2Vec2 pointA = b2Mul(xfA, localPointA);
 			b2Vec2 pointB = b2Mul(xfB, localPointB);
 			m_axis = pointB - pointA;
-			float32 s = m_axis.Normalize();
+			float s = m_axis.Normalize();
 			return s;
 		}
 		else if (cache->indexA[0] == cache->indexA[1])
@@ -88,7 +90,7 @@ struct b2SeparationFunction
 			b2Vec2 localPointA = proxyA->GetVertex(cache->indexA[0]);
 			b2Vec2 pointA = b2Mul(xfA, localPointA);
 
-			float32 s = b2Dot(pointA - pointB, normal);
+			float s = b2Dot(pointA - pointB, normal);
 			if (s < 0.0f)
 			{
 				m_axis = -m_axis;
@@ -102,7 +104,7 @@ struct b2SeparationFunction
 			m_type = e_faceA;
 			b2Vec2 localPointA1 = m_proxyA->GetVertex(cache->indexA[0]);
 			b2Vec2 localPointA2 = m_proxyA->GetVertex(cache->indexA[1]);
-
+			
 			m_axis = b2Cross(localPointA2 - localPointA1, 1.0f);
 			m_axis.Normalize();
 			b2Vec2 normal = b2Mul(xfA.q, m_axis);
@@ -113,7 +115,7 @@ struct b2SeparationFunction
 			b2Vec2 localPointB = m_proxyB->GetVertex(cache->indexB[0]);
 			b2Vec2 pointB = b2Mul(xfB, localPointB);
 
-			float32 s = b2Dot(pointB - pointA, normal);
+			float s = b2Dot(pointB - pointA, normal);
 			if (s < 0.0f)
 			{
 				m_axis = -m_axis;
@@ -124,7 +126,7 @@ struct b2SeparationFunction
 	}
 
 	//
-	float32 FindMinSeparation(int32* indexA, int32* indexB, float32 t) const
+	float FindMinSeparation(int32* indexA, int32* indexB, float t) const
 	{
 		b2Transform xfA, xfB;
 		m_sweepA.GetTransform(&xfA, t);
@@ -142,11 +144,11 @@ struct b2SeparationFunction
 
 				b2Vec2 localPointA = m_proxyA->GetVertex(*indexA);
 				b2Vec2 localPointB = m_proxyB->GetVertex(*indexB);
-
+				
 				b2Vec2 pointA = b2Mul(xfA, localPointA);
 				b2Vec2 pointB = b2Mul(xfB, localPointB);
 
-				float32 separation = b2Dot(pointB - pointA, m_axis);
+				float separation = b2Dot(pointB - pointA, m_axis);
 				return separation;
 			}
 
@@ -156,14 +158,14 @@ struct b2SeparationFunction
 				b2Vec2 pointA = b2Mul(xfA, m_localPoint);
 
 				b2Vec2 axisB = b2MulT(xfB.q, -normal);
-
+				
 				*indexA = -1;
 				*indexB = m_proxyB->GetSupport(axisB);
 
 				b2Vec2 localPointB = m_proxyB->GetVertex(*indexB);
 				b2Vec2 pointB = b2Mul(xfB, localPointB);
 
-				float32 separation = b2Dot(pointB - pointA, normal);
+				float separation = b2Dot(pointB - pointA, normal);
 				return separation;
 			}
 
@@ -180,7 +182,7 @@ struct b2SeparationFunction
 				b2Vec2 localPointA = m_proxyA->GetVertex(*indexA);
 				b2Vec2 pointA = b2Mul(xfA, localPointA);
 
-				float32 separation = b2Dot(pointA - pointB, normal);
+				float separation = b2Dot(pointA - pointB, normal);
 				return separation;
 			}
 
@@ -193,7 +195,7 @@ struct b2SeparationFunction
 	}
 
 	//
-	float32 Evaluate(int32 indexA, int32 indexB, float32 t) const
+	float Evaluate(int32 indexA, int32 indexB, float t) const
 	{
 		b2Transform xfA, xfB;
 		m_sweepA.GetTransform(&xfA, t);
@@ -208,7 +210,7 @@ struct b2SeparationFunction
 
 				b2Vec2 pointA = b2Mul(xfA, localPointA);
 				b2Vec2 pointB = b2Mul(xfB, localPointB);
-				float32 separation = b2Dot(pointB - pointA, m_axis);
+				float separation = b2Dot(pointB - pointA, m_axis);
 
 				return separation;
 			}
@@ -221,7 +223,7 @@ struct b2SeparationFunction
 				b2Vec2 localPointB = m_proxyB->GetVertex(indexB);
 				b2Vec2 pointB = b2Mul(xfB, localPointB);
 
-				float32 separation = b2Dot(pointB - pointA, normal);
+				float separation = b2Dot(pointB - pointA, normal);
 				return separation;
 			}
 
@@ -233,7 +235,7 @@ struct b2SeparationFunction
 				b2Vec2 localPointA = m_proxyA->GetVertex(indexA);
 				b2Vec2 pointA = b2Mul(xfA, localPointA);
 
-				float32 separation = b2Dot(pointA - pointB, normal);
+				float separation = b2Dot(pointA - pointB, normal);
 				return separation;
 			}
 
@@ -257,9 +259,7 @@ void b2TimeOfImpact(b2TOIOutput* output, const b2TOIInput* input)
 {
 	b2Timer timer;
 
-#if b2_enableGlobalStats
 	++b2_toiCalls;
-#endif
 
 	output->state = b2TOIOutput::e_unknown;
 	output->t = input->tMax;
@@ -275,14 +275,14 @@ void b2TimeOfImpact(b2TOIOutput* output, const b2TOIInput* input)
 	sweepA.Normalize();
 	sweepB.Normalize();
 
-	float32 tMax = input->tMax;
+	float tMax = input->tMax;
 
-	float32 totalRadius = proxyA->m_radius + proxyB->m_radius;
-	float32 target = b2Max(b2_linearSlop, totalRadius - 3.0f * b2_linearSlop);
-	float32 tolerance = 0.25f * b2_linearSlop;
+	float totalRadius = proxyA->m_radius + proxyB->m_radius;
+	float target = b2Max(b2_linearSlop, totalRadius - 3.0f * b2_linearSlop);
+	float tolerance = 0.25f * b2_linearSlop;
 	b2Assert(target > tolerance);
 
-	float32 t1 = 0.0f;
+	float t1 = 0.0f;
 	const int32 k_maxIterations = 20;	// TODO_ERIN b2Settings
 	int32 iter = 0;
 
@@ -333,17 +333,17 @@ void b2TimeOfImpact(b2TOIOutput* output, const b2TOIInput* input)
 		// Dump the curve seen by the root finder
 		{
 			const int32 N = 100;
-			float32 dx = 1.0f / N;
-			float32 xs[N+1];
-			float32 fs[N+1];
+			float dx = 1.0f / N;
+			float xs[N+1];
+			float fs[N+1];
 
-			float32 x = 0.0f;
+			float x = 0.0f;
 
 			for (int32 i = 0; i <= N; ++i)
 			{
 				sweepA.GetTransform(&xfA, x);
 				sweepB.GetTransform(&xfB, x);
-				float32 f = fcn.Evaluate(xfA, xfB) - target;
+				float f = fcn.Evaluate(xfA, xfB) - target;
 
 				printf("%g %g\n", x, f);
 
@@ -358,13 +358,13 @@ void b2TimeOfImpact(b2TOIOutput* output, const b2TOIInput* input)
 		// Compute the TOI on the separating axis. We do this by successively
 		// resolving the deepest point. This loop is bounded by the number of vertices.
 		bool done = false;
-		float32 t2 = tMax;
+		float t2 = tMax;
 		int32 pushBackIter = 0;
 		for (;;)
 		{
 			// Find the deepest point at t2. Store the witness point indices.
 			int32 indexA, indexB;
-			float32 s2 = fcn.FindMinSeparation(&indexA, &indexB, t2);
+			float s2 = fcn.FindMinSeparation(&indexA, &indexB, t2);
 
 			// Is the final configuration separated?
 			if (s2 > target + tolerance)
@@ -385,7 +385,7 @@ void b2TimeOfImpact(b2TOIOutput* output, const b2TOIInput* input)
 			}
 
 			// Compute the initial separation of the witness points.
-			float32 s1 = fcn.Evaluate(indexA, indexB, t1);
+			float s1 = fcn.Evaluate(indexA, indexB, t1);
 
 			// Check for initial overlap. This might happen if the root finder
 			// runs out of iterations.
@@ -409,11 +409,11 @@ void b2TimeOfImpact(b2TOIOutput* output, const b2TOIInput* input)
 
 			// Compute 1D root of: f(x) - target = 0
 			int32 rootIterCount = 0;
-			float32 a1 = t1, a2 = t2;
+			float a1 = t1, a2 = t2;
 			for (;;)
 			{
 				// Use a mix of the secant rule and bisection.
-				float32 t;
+				float t;
 				if (rootIterCount & 1)
 				{
 					// Secant rule to improve convergence.
@@ -426,11 +426,9 @@ void b2TimeOfImpact(b2TOIOutput* output, const b2TOIInput* input)
 				}
 
 				++rootIterCount;
-#if b2_enableGlobalStats
 				++b2_toiRootIters;
-#endif
 
-				float32 s = fcn.Evaluate(indexA, indexB, t);
+				float s = fcn.Evaluate(indexA, indexB, t);
 
 				if (b2Abs(s - target) < tolerance)
 				{
@@ -450,16 +448,15 @@ void b2TimeOfImpact(b2TOIOutput* output, const b2TOIInput* input)
 					a2 = t;
 					s2 = s;
 				}
-
+				
 				if (rootIterCount == 50)
 				{
 					break;
 				}
 			}
 
-#if b2_enableGlobalStats
 			b2_toiMaxRootIters = b2Max(b2_toiMaxRootIters, rootIterCount);
-#endif
+
 			++pushBackIter;
 
 			if (pushBackIter == b2_maxPolygonVertices)
@@ -469,9 +466,7 @@ void b2TimeOfImpact(b2TOIOutput* output, const b2TOIInput* input)
 		}
 
 		++iter;
-#if b2_enableGlobalStats
 		++b2_toiIters;
-#endif
 
 		if (done)
 		{
@@ -487,11 +482,9 @@ void b2TimeOfImpact(b2TOIOutput* output, const b2TOIInput* input)
 		}
 	}
 
-#if b2_enableGlobalStats
 	b2_toiMaxIters = b2Max(b2_toiMaxIters, iter);
 
-	float32 time = timer.GetMilliseconds();
+	float time = timer.GetMilliseconds();
 	b2_toiMaxTime = b2Max(b2_toiMaxTime, time);
 	b2_toiTime += time;
-#endif
 }

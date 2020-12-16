@@ -1,24 +1,28 @@
-/*
-* Copyright (c) 2007-2009 Erin Catto http://www.box2d.org
-*
-* This software is provided 'as-is', without any express or implied
-* warranty.  In no event will the authors be held liable for any damages
-* arising from the use of this software.
-* Permission is granted to anyone to use this software for any purpose,
-* including commercial applications, and to alter it and redistribute it
-* freely, subject to the following restrictions:
-* 1. The origin of this software must not be misrepresented; you must not
-* claim that you wrote the original software. If you use this software
-* in a product, an acknowledgment in the product documentation would be
-* appreciated but is not required.
-* 2. Altered source versions must be plainly marked as such, and must not be
-* misrepresented as being the original software.
-* 3. This notice may not be removed or altered from any source distribution.
-*/
+// MIT License
 
-#include "Box2D/Collision/b2Collision.h"
-#include "Box2D/Collision/Shapes/b2CircleShape.h"
-#include "Box2D/Collision/Shapes/b2PolygonShape.h"
+// Copyright (c) 2019 Erin Catto
+
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
+#include "box2d/b2_collision.h"
+#include "box2d/b2_circle_shape.h"
+#include "box2d/b2_polygon_shape.h"
 
 void b2CollideCircles(
 	b2Manifold* manifold,
@@ -31,9 +35,9 @@ void b2CollideCircles(
 	b2Vec2 pB = b2Mul(xfB, circleB->m_p);
 
 	b2Vec2 d = pB - pA;
-	float32 distSqr = b2Dot(d, d);
-	float32 rA = circleA->m_radius, rB = circleB->m_radius;
-	float32 radius = rA + rB;
+	float distSqr = b2Dot(d, d);
+	float rA = circleA->m_radius, rB = circleB->m_radius;
+	float radius = rA + rB;
 	if (distSqr > radius * radius)
 	{
 		return;
@@ -61,15 +65,15 @@ void b2CollidePolygonAndCircle(
 
 	// Find the min separating edge.
 	int32 normalIndex = 0;
-	float32 separation = -b2_maxFloat;
-	float32 radius = polygonA->m_radius + circleB->m_radius;
+	float separation = -b2_maxFloat;
+	float radius = polygonA->m_radius + circleB->m_radius;
 	int32 vertexCount = polygonA->m_count;
 	const b2Vec2* vertices = polygonA->m_vertices;
 	const b2Vec2* normals = polygonA->m_normals;
 
 	for (int32 i = 0; i < vertexCount; ++i)
 	{
-		float32 s = b2Dot(normals[i], cLocal - vertices[i]);
+		float s = b2Dot(normals[i], cLocal - vertices[i]);
 
 		if (s > radius)
 		{
@@ -103,8 +107,8 @@ void b2CollidePolygonAndCircle(
 	}
 
 	// Compute barycentric coordinates
-	float32 u1 = b2Dot(cLocal - v1, v2 - v1);
-	float32 u2 = b2Dot(cLocal - v2, v1 - v2);
+	float u1 = b2Dot(cLocal - v1, v2 - v1);
+	float u2 = b2Dot(cLocal - v2, v1 - v2);
 	if (u1 <= 0.0f)
 	{
 		if (b2DistanceSquared(cLocal, v1) > radius * radius)
@@ -138,7 +142,7 @@ void b2CollidePolygonAndCircle(
 	else
 	{
 		b2Vec2 faceCenter = 0.5f * (v1 + v2);
-		float32 s = b2Dot(cLocal - faceCenter, normals[vertIndex1]);
+		float s = b2Dot(cLocal - faceCenter, normals[vertIndex1]);
 		if (s > radius)
 		{
 			return;

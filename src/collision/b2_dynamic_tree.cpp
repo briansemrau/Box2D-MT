@@ -1,22 +1,25 @@
-/*
-* Copyright (c) 2009 Erin Catto http://www.box2d.org
-*
-* This software is provided 'as-is', without any express or implied
-* warranty.  In no event will the authors be held liable for any damages
-* arising from the use of this software.
-* Permission is granted to anyone to use this software for any purpose,
-* including commercial applications, and to alter it and redistribute it
-* freely, subject to the following restrictions:
-* 1. The origin of this software must not be misrepresented; you must not
-* claim that you wrote the original software. If you use this software
-* in a product, an acknowledgment in the product documentation would be
-* appreciated but is not required.
-* 2. Altered source versions must be plainly marked as such, and must not be
-* misrepresented as being the original software.
-* 3. This notice may not be removed or altered from any source distribution.
-*/
+// MIT License
 
-#include "Box2D/Collision/b2DynamicTree.h"
+// Copyright (c) 2019 Erin Catto
+
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+#include "box2d/b2_dynamic_tree.h"
 #include <string.h>
 
 b2DynamicTree::b2DynamicTree()
@@ -37,8 +40,6 @@ b2DynamicTree::b2DynamicTree()
 	m_nodes[m_nodeCapacity-1].next = b2_nullNode;
 	m_nodes[m_nodeCapacity-1].height = -1;
 	m_freeList = 0;
-
-	m_path = 0;
 
 	m_insertionCount = 0;
 }
@@ -84,6 +85,7 @@ int32 b2DynamicTree::AllocateNode()
 	m_nodes[nodeId].child2 = b2_nullNode;
 	m_nodes[nodeId].height = 0;
 	m_nodes[nodeId].userData = nullptr;
+	m_nodes[nodeId].moved = false;
 	++m_nodeCount;
 	return nodeId;
 }
@@ -112,6 +114,7 @@ int32 b2DynamicTree::CreateProxy(const b2AABB& aabb, void* userData)
 	m_nodes[proxyId].aabb.upperBound = aabb.upperBound + r;
 	m_nodes[proxyId].userData = userData;
 	m_nodes[proxyId].height = 0;
+	m_nodes[proxyId].moved = true;
 
 	InsertLeaf(proxyId);
 
@@ -133,43 +136,61 @@ bool b2DynamicTree::MoveProxy(int32 proxyId, const b2AABB& aabb, const b2Vec2& d
 
 	b2Assert(m_nodes[proxyId].IsLeaf());
 
-	if (m_nodes[proxyId].aabb.Contains(aabb))
-	{
-		return false;
-	}
-
-	RemoveLeaf(proxyId);
-
-	// Extend AABB.
-	b2AABB b = aabb;
+	// Extend AABB
+	b2AABB fatAABB;
 	b2Vec2 r(b2_aabbExtension, b2_aabbExtension);
-	b.lowerBound = b.lowerBound - r;
-	b.upperBound = b.upperBound + r;
+	fatAABB.lowerBound = aabb.lowerBound - r;
+	fatAABB.upperBound = aabb.upperBound + r;
 
-	// Predict AABB displacement.
+	// Predict AABB movement
 	b2Vec2 d = b2_aabbMultiplier * displacement;
 
 	if (d.x < 0.0f)
 	{
-		b.lowerBound.x += d.x;
+		fatAABB.lowerBound.x += d.x;
 	}
 	else
 	{
-		b.upperBound.x += d.x;
+		fatAABB.upperBound.x += d.x;
 	}
 
 	if (d.y < 0.0f)
 	{
-		b.lowerBound.y += d.y;
+		fatAABB.lowerBound.y += d.y;
 	}
 	else
 	{
-		b.upperBound.y += d.y;
+		fatAABB.upperBound.y += d.y;
 	}
 
-	m_nodes[proxyId].aabb = b;
+	const b2AABB& treeAABB = m_nodes[proxyId].aabb;
+	if (treeAABB.Contains(aabb))
+	{
+		// The tree AABB still contains the object, but it might be too large.
+		// Perhaps the object was moving fast but has since gone to sleep.
+		// The huge AABB is larger than the new fat AABB.
+		b2AABB hugeAABB;
+		hugeAABB.lowerBound = fatAABB.lowerBound - 4.0f * r;
+		hugeAABB.upperBound = fatAABB.upperBound + 4.0f * r;
+
+		if (hugeAABB.Contains(treeAABB))
+		{
+			// The tree AABB contains the object AABB and the tree AABB is
+			// not too large. No tree update needed.
+			return false;
+		}
+
+		// Otherwise the tree AABB is huge and needs to be shrunk
+	}
+
+	RemoveLeaf(proxyId);
+
+	m_nodes[proxyId].aabb = fatAABB;
 
 	InsertLeaf(proxyId);
+
+	m_nodes[proxyId].moved = true;
+
 	return true;
 }
 
@@ -192,20 +213,20 @@ void b2DynamicTree::InsertLeaf(int32 leaf)
 		int32 child1 = m_nodes[index].child1;
 		int32 child2 = m_nodes[index].child2;
 
-		float32 area = m_nodes[index].aabb.GetPerimeter();
+		float area = m_nodes[index].aabb.GetPerimeter();
 
 		b2AABB combinedAABB;
 		combinedAABB.Combine(m_nodes[index].aabb, leafAABB);
-		float32 combinedArea = combinedAABB.GetPerimeter();
+		float combinedArea = combinedAABB.GetPerimeter();
 
 		// Cost of creating a new parent for this node and the new leaf
-		float32 cost = 2.0f * combinedArea;
+		float cost = 2.0f * combinedArea;
 
 		// Minimum cost of pushing the leaf further down the tree
-		float32 inheritanceCost = 2.0f * (combinedArea - area);
+		float inheritanceCost = 2.0f * (combinedArea - area);
 
 		// Cost of descending into child1
-		float32 cost1;
+		float cost1;
 		if (m_nodes[child1].IsLeaf())
 		{
 			b2AABB aabb;
@@ -216,13 +237,13 @@ void b2DynamicTree::InsertLeaf(int32 leaf)
 		{
 			b2AABB aabb;
 			aabb.Combine(leafAABB, m_nodes[child1].aabb);
-			float32 oldArea = m_nodes[child1].aabb.GetPerimeter();
-			float32 newArea = aabb.GetPerimeter();
+			float oldArea = m_nodes[child1].aabb.GetPerimeter();
+			float newArea = aabb.GetPerimeter();
 			cost1 = (newArea - oldArea) + inheritanceCost;
 		}
 
 		// Cost of descending into child2
-		float32 cost2;
+		float cost2;
 		if (m_nodes[child2].IsLeaf())
 		{
 			b2AABB aabb;
@@ -233,8 +254,8 @@ void b2DynamicTree::InsertLeaf(int32 leaf)
 		{
 			b2AABB aabb;
 			aabb.Combine(leafAABB, m_nodes[child2].aabb);
-			float32 oldArea = m_nodes[child2].aabb.GetPerimeter();
-			float32 newArea = aabb.GetPerimeter();
+			float oldArea = m_nodes[child2].aabb.GetPerimeter();
+			float newArea = aabb.GetPerimeter();
 			cost2 = newArea - oldArea + inheritanceCost;
 		}
 
@@ -453,7 +474,7 @@ int32 b2DynamicTree::Balance(int32 iA)
 
 		return iC;
 	}
-
+	
 	// Rotate B up
 	if (balance < -1)
 	{
@@ -528,7 +549,7 @@ int32 b2DynamicTree::GetHeight() const
 }
 
 //
-float32 b2DynamicTree::GetAreaRatio() const
+float b2DynamicTree::GetAreaRatio() const
 {
 	if (m_root == b2_nullNode)
 	{
@@ -536,9 +557,9 @@ float32 b2DynamicTree::GetAreaRatio() const
 	}
 
 	const b2TreeNode* root = m_nodes + m_root;
-	float32 rootArea = root->aabb.GetPerimeter();
+	float rootArea = root->aabb.GetPerimeter();
 
-	float32 totalArea = 0.0f;
+	float totalArea = 0.0f;
 	for (int32 i = 0; i < m_nodeCapacity; ++i)
 	{
 		const b2TreeNode* node = m_nodes + i;
@@ -721,7 +742,7 @@ void b2DynamicTree::RebuildBottomUp()
 
 	while (count > 1)
 	{
-		float32 minCost = b2_maxFloat;
+		float minCost = b2_maxFloat;
 		int32 iMin = -1, jMin = -1;
 		for (int32 i = 0; i < count; ++i)
 		{
@@ -732,7 +753,7 @@ void b2DynamicTree::RebuildBottomUp()
 				b2AABB aabbj = m_nodes[nodes[j]].aabb;
 				b2AABB b;
 				b.Combine(aabbi, aabbj);
-				float32 cost = b.GetPerimeter();
+				float cost = b.GetPerimeter();
 				if (cost < minCost)
 				{
 					iMin = i;

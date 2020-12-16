@@ -1,30 +1,43 @@
-/*
-* Copyright (c) 2006-2010 Erin Catto http://www.box2d.org
-*
-* This software is provided 'as-is', without any express or implied
-* warranty.  In no event will the authors be held liable for any damages
-* arising from the use of this software.
-* Permission is granted to anyone to use this software for any purpose,
-* including commercial applications, and to alter it and redistribute it
-* freely, subject to the following restrictions:
-* 1. The origin of this software must not be misrepresented; you must not
-* claim that you wrote the original software. If you use this software
-* in a product, an acknowledgment in the product documentation would be
-* appreciated but is not required.
-* 2. Altered source versions must be plainly marked as such, and must not be
-* misrepresented as being the original software.
-* 3. This notice may not be removed or altered from any source distribution.
-*/
+// MIT License
 
-#include "Box2D/Collision/Shapes/b2EdgeShape.h"
+// Copyright (c) 2019 Erin Catto
+
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
+#include "box2d/b2_edge_shape.h"
+#include "box2d/b2_block_allocator.h"
 #include <new>
 
-void b2EdgeShape::Set(const b2Vec2& v1, const b2Vec2& v2)
+void b2EdgeShape::SetOneSided(const b2Vec2& v0, const b2Vec2& v1, const b2Vec2& v2, const b2Vec2& v3)
+{
+	m_vertex0 = v0;
+	m_vertex1 = v1;
+	m_vertex2 = v2;
+	m_vertex3 = v3;
+	m_oneSided = true;
+}
+
+void b2EdgeShape::SetTwoSided(const b2Vec2& v1, const b2Vec2& v2)
 {
 	m_vertex1 = v1;
 	m_vertex2 = v2;
-	m_hasVertex0 = false;
-	m_hasVertex3 = false;
+	m_oneSided = false;
 }
 
 b2Shape* b2EdgeShape::Clone(b2BlockAllocator* allocator) const
@@ -64,21 +77,28 @@ bool b2EdgeShape::RayCast(b2RayCastOutput* output, const b2RayCastInput& input,
 	b2Vec2 v1 = m_vertex1;
 	b2Vec2 v2 = m_vertex2;
 	b2Vec2 e = v2 - v1;
+
+	// Normal points to the right, looking from v1 at v2
 	b2Vec2 normal(e.y, -e.x);
 	normal.Normalize();
 
 	// q = p1 + t * d
 	// dot(normal, q - v1) = 0
 	// dot(normal, p1 - v1) + t * dot(normal, d) = 0
-	float32 numerator = b2Dot(normal, v1 - p1);
-	float32 denominator = b2Dot(normal, d);
+	float numerator = b2Dot(normal, v1 - p1);
+	if (m_oneSided && numerator > 0.0f)
+	{
+		return false;
+	}
+
+	float denominator = b2Dot(normal, d);
 
 	if (denominator == 0.0f)
 	{
 		return false;
 	}
 
-	float32 t = numerator / denominator;
+	float t = numerator / denominator;
 	if (t < 0.0f || input.maxFraction < t)
 	{
 		return false;
@@ -89,13 +109,13 @@ bool b2EdgeShape::RayCast(b2RayCastOutput* output, const b2RayCastInput& input,
 	// q = v1 + s * r
 	// s = dot(q - v1, r) / dot(r, r)
 	b2Vec2 r = v2 - v1;
-	float32 rr = b2Dot(r, r);
+	float rr = b2Dot(r, r);
 	if (rr == 0.0f)
 	{
 		return false;
 	}
 
-	float32 s = b2Dot(q - v1, r) / rr;
+	float s = b2Dot(q - v1, r) / rr;
 	if (s < 0.0f || 1.0f < s)
 	{
 		return false;
@@ -128,7 +148,7 @@ void b2EdgeShape::ComputeAABB(b2AABB* aabb, const b2Transform& xf, int32 childIn
 	aabb->upperBound = upper + r;
 }
 
-void b2EdgeShape::ComputeMass(b2MassData* massData, float32 density) const
+void b2EdgeShape::ComputeMass(b2MassData* massData, float density) const
 {
 	B2_NOT_USED(density);
 
