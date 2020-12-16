@@ -1,25 +1,30 @@
-/*
-* Copyright (c) 2006-2011 Erin Catto http://www.box2d.org
-*
-* This software is provided 'as-is', without any express or implied
-* warranty.  In no event will the authors be held liable for any damages
-* arising from the use of this software.
-* Permission is granted to anyone to use this software for any purpose,
-* including commercial applications, and to alter it and redistribute it
-* freely, subject to the following restrictions:
-* 1. The origin of this software must not be misrepresented; you must not
-* claim that you wrote the original software. If you use this software
-* in a product, an acknowledgment in the product documentation would be
-* appreciated but is not required.
-* 2. Altered source versions must be plainly marked as such, and must not be
-* misrepresented as being the original software.
-* 3. This notice may not be removed or altered from any source distribution.
-*/
+// MIT License
+
+// Copyright (c) 2019 Erin Catto
+
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
 
 #ifndef B2_PRISMATIC_JOINT_H
 #define B2_PRISMATIC_JOINT_H
 
-#include "Box2D/Dynamics/Joints/b2Joint.h"
+#include "b2_api.h"
+#include "b2_joint.h"
 
 /// Prismatic joint definition. This requires defining a line of
 /// motion using an axis and an anchor point. The definition uses local
@@ -27,7 +32,7 @@
 /// can violate the constraint slightly. The joint translation is zero
 /// when the local anchor points coincide in world space. Using local
 /// anchors and a local axis helps when saving and loading a game.
-struct b2PrismaticJointDef : public b2JointDef
+struct B2_API b2PrismaticJointDef : public b2JointDef
 {
 	b2PrismaticJointDef()
 	{
@@ -58,39 +63,39 @@ struct b2PrismaticJointDef : public b2JointDef
 	b2Vec2 localAxisA;
 
 	/// The constrained angle between the bodies: bodyB_angle - bodyA_angle.
-	float32 referenceAngle;
+	float referenceAngle;
 
 	/// Enable/disable the joint limit.
 	bool enableLimit;
 
 	/// The lower translation limit, usually in meters.
-	float32 lowerTranslation;
+	float lowerTranslation;
 
 	/// The upper translation limit, usually in meters.
-	float32 upperTranslation;
+	float upperTranslation;
 
 	/// Enable/disable the joint motor.
 	bool enableMotor;
 
 	/// The maximum motor torque, usually in N-m.
-	float32 maxMotorForce;
+	float maxMotorForce;
 
 	/// The desired motor speed in radians per second.
-	float32 motorSpeed;
+	float motorSpeed;
 };
 
 /// A prismatic joint. This joint provides one degree of freedom: translation
 /// along an axis fixed in bodyA. Relative rotation is prevented. You can
 /// use a joint limit to restrict the range of motion and a joint motor to
 /// drive the motion or to model joint friction.
-class b2PrismaticJoint : public b2Joint
+class B2_API b2PrismaticJoint : public b2Joint
 {
 public:
 	b2Vec2 GetAnchorA() const override;
 	b2Vec2 GetAnchorB() const override;
 
-	b2Vec2 GetReactionForce(float32 inv_dt) const override;
-	float32 GetReactionTorque(float32 inv_dt) const override;
+	b2Vec2 GetReactionForce(float inv_dt) const override;
+	float GetReactionTorque(float inv_dt) const override;
 
 	/// The local anchor point relative to bodyA's origin.
 	const b2Vec2& GetLocalAnchorA() const { return m_localAnchorA; }
@@ -102,13 +107,13 @@ public:
 	const b2Vec2& GetLocalAxisA() const { return m_localXAxisA; }
 
 	/// Get the reference angle.
-	float32 GetReferenceAngle() const { return m_referenceAngle; }
+	float GetReferenceAngle() const { return m_referenceAngle; }
 
 	/// Get the current joint translation, usually in meters.
-	float32 GetJointTranslation() const;
+	float GetJointTranslation() const;
 
 	/// Get the current joint translation speed, usually in meters per second.
-	float32 GetJointSpeed() const;
+	float GetJointSpeed() const;
 
 	/// Is the joint limit enabled?
 	bool IsLimitEnabled() const;
@@ -117,13 +122,13 @@ public:
 	void EnableLimit(bool flag);
 
 	/// Get the lower joint limit, usually in meters.
-	float32 GetLowerLimit() const;
+	float GetLowerLimit() const;
 
 	/// Get the upper joint limit, usually in meters.
-	float32 GetUpperLimit() const;
+	float GetUpperLimit() const;
 
 	/// Set the joint limits, usually in meters.
-	void SetLimits(float32 lower, float32 upper);
+	void SetLimits(float lower, float upper);
 
 	/// Is the joint motor enabled?
 	bool IsMotorEnabled() const;
@@ -132,20 +137,23 @@ public:
 	void EnableMotor(bool flag);
 
 	/// Set the motor speed, usually in meters per second.
-	void SetMotorSpeed(float32 speed);
+	void SetMotorSpeed(float speed);
 
 	/// Get the motor speed, usually in meters per second.
-	float32 GetMotorSpeed() const;
+	float GetMotorSpeed() const;
 
 	/// Set the maximum motor force, usually in N.
-	void SetMaxMotorForce(float32 force);
-	float32 GetMaxMotorForce() const { return m_maxMotorForce; }
+	void SetMaxMotorForce(float force);
+	float GetMaxMotorForce() const { return m_maxMotorForce; }
 
 	/// Get the current motor force given the inverse time step, usually in N.
-	float32 GetMotorForce(float32 inv_dt) const;
+	float GetMotorForce(float inv_dt) const;
 
 	/// Dump to b2Log
 	void Dump() override;
+
+	///
+	void Draw(b2Draw* draw) const override;
 
 protected:
 	friend class b2Joint;
@@ -156,39 +164,40 @@ protected:
 	void SolveVelocityConstraints(const b2SolverData& data) override;
 	bool SolvePositionConstraints(const b2SolverData& data) override;
 
-	// Solver shared
 	b2Vec2 m_localAnchorA;
 	b2Vec2 m_localAnchorB;
 	b2Vec2 m_localXAxisA;
 	b2Vec2 m_localYAxisA;
-	float32 m_referenceAngle;
-	b2Vec3 m_impulse;
-	float32 m_motorImpulse;
-	float32 m_lowerTranslation;
-	float32 m_upperTranslation;
-	float32 m_maxMotorForce;
-	float32 m_motorSpeed;
+	float m_referenceAngle;
+	b2Vec2 m_impulse;
+	float m_motorImpulse;
+	float m_lowerImpulse;
+	float m_upperImpulse;
+	float m_lowerTranslation;
+	float m_upperTranslation;
+	float m_maxMotorForce;
+	float m_motorSpeed;
 	bool m_enableLimit;
 	bool m_enableMotor;
-	b2LimitState m_limitState;
 
 	// Solver temp
 	int32 m_indexA;
 	int32 m_indexB;
 	b2Vec2 m_localCenterA;
 	b2Vec2 m_localCenterB;
-	float32 m_invMassA;
-	float32 m_invMassB;
-	float32 m_invIA;
-	float32 m_invIB;
+	float m_invMassA;
+	float m_invMassB;
+	float m_invIA;
+	float m_invIB;
 	b2Vec2 m_axis, m_perp;
-	float32 m_s1, m_s2;
-	float32 m_a1, m_a2;
-	b2Mat33 m_K;
-	float32 m_motorMass;
+	float m_s1, m_s2;
+	float m_a1, m_a2;
+	b2Mat22 m_K;
+	float m_translation;
+	float m_axialMass;
 };
 
-inline float32 b2PrismaticJoint::GetMotorSpeed() const
+inline float b2PrismaticJoint::GetMotorSpeed() const
 {
 	return m_motorSpeed;
 }

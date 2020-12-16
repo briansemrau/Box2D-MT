@@ -1,32 +1,35 @@
-/*
-* Copyright (c) 2006-2011 Erin Catto http://www.box2d.org
-* Copyright (c) 2015 Justin Hoffman https://github.com/jhoffman0x/Box2D-MT
-*
-* This software is provided 'as-is', without any express or implied
-* warranty.  In no event will the authors be held liable for any damages
-* arising from the use of this software.
-* Permission is granted to anyone to use this software for any purpose,
-* including commercial applications, and to alter it and redistribute it
-* freely, subject to the following restrictions:
-* 1. The origin of this software must not be misrepresented; you must not
-* claim that you wrote the original software. If you use this software
-* in a product, an acknowledgment in the product documentation would be
-* appreciated but is not required.
-* 2. Altered source versions must be plainly marked as such, and must not be
-* misrepresented as being the original software.
-* 3. This notice may not be removed or altered from any source distribution.
-*/
+// MIT License
+
+// Copyright (c) 2019 Erin Catto
+
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
 
 #ifndef B2_WORLD_H
 #define B2_WORLD_H
 
-#include "Box2D/Common/b2Math.h"
-#include "Box2D/Common/b2BlockAllocator.h"
-#include "Box2D/Common/b2GrowableArray.h"
-#include "Box2D/Common/b2StackAllocator.h"
-#include "Box2D/Dynamics/b2ContactManager.h"
-#include "Box2D/Dynamics/b2WorldCallbacks.h"
-#include "Box2D/Dynamics/b2TimeStep.h"
+#include "b2_api.h"
+#include "b2_block_allocator.h"
+#include "b2_contact_manager.h"
+#include "b2_math.h"
+#include "b2_stack_allocator.h"
+#include "b2_time_step.h"
+#include "b2_world_callbacks.h"
 #include "Box2D/MT/b2MtUtil.h"
 
 struct b2AABB;
@@ -43,7 +46,7 @@ class b2Island;
 /// The world class manages all physics entities, dynamic simulation,
 /// and asynchronous queries. The world also contains efficient memory
 /// management facilities.
-class b2World
+class B2_API b2World
 {
 public:
 	/// Construct a world object.
@@ -72,7 +75,7 @@ public:
 	void SetContactListener(b2ContactListener* listener);
 
 	/// Register a routine for debug drawing. The debug draw functions are called
-	/// inside with b2World::DrawDebugData method. The debug draw object is owned
+	/// inside with b2World::DebugDraw method. The debug draw object is owned
 	/// by you and must remain in scope.
 	void SetDebugDraw(b2Draw* debugDraw);
 
@@ -101,8 +104,7 @@ public:
 	/// @param timeStep the amount of time to simulate, this should not vary.
 	/// @param velocityIterations for the velocity constraint solver.
 	/// @param positionIterations for the position constraint solver.
-	/// @param executor executes the step tasks.
-	void Step(	float32 timeStep,
+	void Step(	float timeStep,
 				int32 velocityIterations,
 				int32 positionIterations,
 				b2TaskExecutor& executor);
@@ -117,7 +119,7 @@ public:
 	void ClearForces();
 
 	/// Call this to draw shapes and other debug draw data. This is intentionally non-const.
-	void DrawDebugData();
+	void DebugDraw();
 
 	/// Query the world for all fixtures that potentially overlap the
 	/// provided AABB.
@@ -203,7 +205,7 @@ public:
 
 	/// Get the quality metric of the dynamic tree. The smaller the better.
 	/// The minimum is 1.
-	float32 GetTreeQuality() const;
+	float GetTreeQuality() const;
 
 	/// Change the global gravity vector.
 	void SetGravity(const b2Vec2& gravity);
@@ -241,24 +243,13 @@ public:
 
 	/// Set the amount of time (milliseconds) an executor spent locking during the last step.
 	/// This is used in the testbed but custom executors aren't required to call this.
-	void SetLockingTime(float32 ms);
+	void SetLockingTime(float ms);
 
 	/// Dump the world into the log file.
 	/// @warning this should be called outside of a time step.
 	void Dump();
 
 private:
-
-	// m_flags
-	enum
-	{
-		e_newFixture			= 0x0001,
-		e_locked				= 0x0002,
-		e_clearForces			= 0x0004,
-		e_mtLocked				= 0x0008,
-		e_mtCollisionLocked		= 0x0010,
-		e_mtSolveLocked			= 0x0020,
-	};
 
 	friend class b2Body;
 	friend class b2Fixture;
@@ -286,10 +277,9 @@ private:
 
 	void RecalculateSleeping(b2Body* b);
 
-	void DrawJoint(b2Joint* joint);
 	void DrawShape(b2Fixture* shape, const b2Transform& xf, const b2Color& color);
 
-	void SetMtLock(int32 lockFlags);
+	void SetMtLock(bool flag_mtLocked, bool flag_mtCollisionLocked, bool flag_mtSolveLocked);
 	bool IsMtCollisionLocked() const;
 	bool IsMtSolveLocked() const;
 
@@ -309,8 +299,6 @@ private:
 
 	b2BlockAllocator m_blockAllocator;
 	b2StackAllocator m_stackAllocator;
-
-	int32 m_flags;
 
 	b2ContactManager m_contactManager;
 
@@ -337,7 +325,14 @@ private:
 
 	// This is used to compute the time step ratio to
 	// support a variable time step.
-	float32 m_inv_dt0;
+	float m_inv_dt0;
+
+	bool m_newContacts;
+	bool m_locked;
+	bool m_clearForces;
+	bool m_mtLocked;
+	bool m_mtCollisionLocked;
+	bool m_mtSolveLocked;
 
 	// These are for debugging the solver.
 	bool m_warmStarting;
@@ -391,7 +386,7 @@ inline int32 b2World::GetJointCount() const
 
 inline int32 b2World::GetContactCount() const
 {
-	return m_contactManager.m_contacts.size();
+	return m_contactManager.m_contactCount;
 }
 
 inline void b2World::SetGravity(const b2Vec2& gravity)
@@ -406,30 +401,40 @@ inline b2Vec2 b2World::GetGravity() const
 
 inline bool b2World::IsLocked() const
 {
-	return (m_flags & e_locked) == e_locked;
+	return m_locked;
+}
+
+inline void b2World::SetMtLock(bool flag_mtLocked, bool flag_mtCollisionLocked, bool flag_mtSolveLocked)
+{
+	m_mtLocked = flag_mtLocked;
+	m_mtCollisionLocked = flag_mtCollisionLocked;
+	m_mtSolveLocked = flag_mtSolveLocked
 }
 
 inline bool b2World::IsMtLocked() const
 {
-	return (m_flags & e_mtLocked) == e_mtLocked;
+	return m_mtLocked;
+}
+
+inline bool b2World::IsMtCollisionLocked() const
+{
+	return m_mtCollisionLocked;
+}
+
+inline bool b2World::IsMtSolveLocked() const
+{
+	return m_mtSolveLocked;
 }
 
 inline void b2World::SetAutoClearForces(bool flag)
 {
-	if (flag)
-	{
-		m_flags |= e_clearForces;
-	}
-	else
-	{
-		m_flags &= ~e_clearForces;
-	}
+	m_clearForces = flag;
 }
 
 /// Get the flag that controls automatic clearing of forces after each time step.
 inline bool b2World::GetAutoClearForces() const
 {
-	return (m_flags & e_clearForces) == e_clearForces;
+	return m_clearForces;
 }
 
 inline const b2ContactManager& b2World::GetContactManager() const
@@ -442,28 +447,9 @@ inline const b2Profile& b2World::GetProfile() const
 	return m_profile;
 }
 
-inline void b2World::SetLockingTime(float32 ms)
+inline void b2World::SetLockingTime(float ms)
 {
 	m_profile.locking = ms;
-}
-
-inline void b2World::SetMtLock(int32 lockFlags)
-{
-	constexpr int32 mask = (e_mtLocked | e_mtCollisionLocked | e_mtSolveLocked);
-	b2Assert((lockFlags & mask) == lockFlags);
-
-	m_flags &= ~mask;
-	m_flags |= lockFlags & mask;
-}
-
-inline bool b2World::IsMtCollisionLocked() const
-{
-	return (m_flags & e_mtCollisionLocked) == e_mtCollisionLocked;
-}
-
-inline bool b2World::IsMtSolveLocked() const
-{
-	return (m_flags & e_mtSolveLocked) == e_mtSolveLocked;
 }
 
 #endif

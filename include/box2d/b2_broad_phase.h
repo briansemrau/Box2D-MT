@@ -1,41 +1,40 @@
-/*
-* Copyright (c) 2006-2009 Erin Catto http://www.box2d.org
-* Copyright (c) 2015 Justin Hoffman https://github.com/jhoffman0x/Box2D-MT
-*
-* This software is provided 'as-is', without any express or implied
-* warranty.  In no event will the authors be held liable for any damages
-* arising from the use of this software.
-* Permission is granted to anyone to use this software for any purpose,
-* including commercial applications, and to alter it and redistribute it
-* freely, subject to the following restrictions:
-* 1. The origin of this software must not be misrepresented; you must not
-* claim that you wrote the original software. If you use this software
-* in a product, an acknowledgment in the product documentation would be
-* appreciated but is not required.
-* 2. Altered source versions must be plainly marked as such, and must not be
-* misrepresented as being the original software.
-* 3. This notice may not be removed or altered from any source distribution.
-*/
+// MIT License
+
+// Copyright (c) 2019 Erin Catto
+
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
 
 #ifndef B2_BROAD_PHASE_H
 #define B2_BROAD_PHASE_H
 
-#include "Box2D/Collision/b2Collision.h"
-#ifdef b2_dynamicTreeOfTrees
-#include "Box2D/MT/b2DynamicTreeOfTrees.h"
-#else
-#include "Box2D/Collision/b2DynamicTree.h"
-#endif
-#include "Box2D/Common/b2GrowableArray.h"
-#include <algorithm>
+#include "b2_api.h"
+#include "b2_settings.h"
+#include "b2_collision.h"
+#include "b2_dynamic_tree.h"
 
-struct b2Pair
+struct B2_API b2Pair
 {
 	int32 proxyIdA;
 	int32 proxyIdB;
 };
 
-struct b2BroadPhasePerThreadData
+struct B2_API b2BroadPhasePerThreadData
 {
 	bool QueryCallback(int32 proxyId);
 
@@ -48,7 +47,7 @@ struct b2BroadPhasePerThreadData
 /// The broad-phase is used for computing pairs and performing volume queries and ray casts.
 /// This broad-phase does not persist pairs. Instead, this reports potentially new pairs.
 /// It is up to the client to consume the new pairs and to track subsequent overlap.
-class b2BroadPhase
+class B2_API b2BroadPhase
 {
 public:
 
@@ -62,7 +61,7 @@ public:
 
 #ifdef b2_dynamicTreeOfTrees
 	/// Destroy all proxies and set the sub-tree dimensions.
-	void Reset(float32 subTreeWidth, float32 subTreeHeight);
+	void Reset(float subTreeWidth, float subTreeHeight);
 
 	/// Visit every leaf in the base tree.
 	template <typename T>
@@ -124,7 +123,7 @@ public:
 	int32 GetTreeBalance() const;
 
 	/// Get the quality metric of the embedded tree.
-	float32 GetTreeQuality() const;
+	float GetTreeQuality() const;
 
 	/// Shift the world origin. Useful for large worlds.
 	/// The shift formula is: position -= newOrigin
@@ -203,7 +202,7 @@ inline int32 b2BroadPhase::GetTreeBalance() const
 	return m_tree.GetMaxBalance();
 }
 
-inline float32 b2BroadPhase::GetTreeQuality() const
+inline float b2BroadPhase::GetTreeQuality() const
 {
 	return m_tree.GetAreaRatio();
 }
@@ -224,7 +223,7 @@ void b2BroadPhase::UpdatePairs(int32 moveBegin, int32 moveEnd, T* callback, uint
 
 		// We have to query the tree with the fat AABB so that
 		// we don't fail to create a pair that may touch later.
-		b2AABB fatAABB = m_tree.GetFatAABB(td->m_queryProxyId);
+		const b2AABB fatAABB = m_tree.GetFatAABB(td->m_queryProxyId);
 
 		// Query the tree, create pairs and add them pair buffer.
 #ifdef b2_dynamicTreeOfTrees

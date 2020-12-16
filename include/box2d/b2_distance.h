@@ -1,32 +1,36 @@
+// MIT License
 
-/*
-* Copyright (c) 2006-2009 Erin Catto http://www.box2d.org
-*
-* This software is provided 'as-is', without any express or implied
-* warranty.  In no event will the authors be held liable for any damages
-* arising from the use of this software.
-* Permission is granted to anyone to use this software for any purpose,
-* including commercial applications, and to alter it and redistribute it
-* freely, subject to the following restrictions:
-* 1. The origin of this software must not be misrepresented; you must not
-* claim that you wrote the original software. If you use this software
-* in a product, an acknowledgment in the product documentation would be
-* appreciated but is not required.
-* 2. Altered source versions must be plainly marked as such, and must not be
-* misrepresented as being the original software.
-* 3. This notice may not be removed or altered from any source distribution.
-*/
+// Copyright (c) 2019 Erin Catto
+
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
 
 #ifndef B2_DISTANCE_H
 #define B2_DISTANCE_H
 
-#include "Box2D/Common/b2Math.h"
+#include "b2_api.h"
+#include "b2_math.h"
 
 class b2Shape;
 
 /// A distance proxy is used by the GJK algorithm.
 /// It encapsulates any shape.
-struct b2DistanceProxy
+struct B2_API b2DistanceProxy
 {
 	b2DistanceProxy() : m_vertices(nullptr), m_count(0), m_radius(0.0f) {}
 
@@ -36,7 +40,7 @@ struct b2DistanceProxy
 
     /// Initialize the proxy using a vertex cloud and radius. The vertices
     /// must remain in scope while the proxy is in use.
-    void Set(const b2Vec2* vertices, int32 count, float32 radius);
+    void Set(const b2Vec2* vertices, int32 count, float radius);
 
 	/// Get the supporting vertex index in the given direction.
 	int32 GetSupport(const b2Vec2& d) const;
@@ -53,14 +57,14 @@ struct b2DistanceProxy
 	b2Vec2 m_buffer[2];
 	const b2Vec2* m_vertices;
 	int32 m_count;
-	float32 m_radius;
+	float m_radius;
 };
 
 /// Used to warm start b2Distance.
 /// Set count to zero on first call.
-struct b2SimplexCache
+struct B2_API b2SimplexCache
 {
-	float32 metric;		///< length or area
+	float metric;		///< length or area
 	uint16 count;
 	uint8 indexA[3];	///< vertices on shape A
 	uint8 indexB[3];	///< vertices on shape B
@@ -68,8 +72,8 @@ struct b2SimplexCache
 
 /// Input for b2Distance.
 /// You have to option to use the shape radii
-/// in the computation. Even 
-struct b2DistanceInput
+/// in the computation. Even
+struct B2_API b2DistanceInput
 {
 	b2DistanceProxy proxyA;
 	b2DistanceProxy proxyB;
@@ -79,23 +83,23 @@ struct b2DistanceInput
 };
 
 /// Output for b2Distance.
-struct b2DistanceOutput
+struct B2_API b2DistanceOutput
 {
 	b2Vec2 pointA;		///< closest point on shapeA
 	b2Vec2 pointB;		///< closest point on shapeB
-	float32 distance;
+	float distance;
 	int32 iterations;	///< number of GJK iterations used
 };
 
 /// Compute the closest points between two shapes. Supports any combination of:
 /// b2CircleShape, b2PolygonShape, b2EdgeShape. The simplex cache is input/output.
 /// On the first call set b2SimplexCache.count to zero.
-void b2Distance(b2DistanceOutput* output,
-				b2SimplexCache* cache, 
+B2_API void b2Distance(b2DistanceOutput* output,
+				b2SimplexCache* cache,
 				const b2DistanceInput* input);
 
 /// Input parameters for b2ShapeCast
-struct b2ShapeCastInput
+struct B2_API b2ShapeCastInput
 {
 	b2DistanceProxy proxyA;
 	b2DistanceProxy proxyB;
@@ -105,16 +109,17 @@ struct b2ShapeCastInput
 };
 
 /// Output results for b2ShapeCast
-struct b2ShapeCastOutput
+struct B2_API b2ShapeCastOutput
 {
 	b2Vec2 point;
 	b2Vec2 normal;
-	float32 lambda;
+	float lambda;
 	int32 iterations;
 };
 
 /// Perform a linear shape cast of shape B moving and shape A fixed. Determines the hit point, normal, and translation fraction.
-bool b2ShapeCast(b2ShapeCastOutput* output, const b2ShapeCastInput* input);
+/// @returns true if hit, false if there is no hit or an initial overlap
+B2_API bool b2ShapeCast(b2ShapeCastOutput* output, const b2ShapeCastInput* input);
 
 //////////////////////////////////////////////////////////////////////////
 
@@ -132,10 +137,10 @@ inline const b2Vec2& b2DistanceProxy::GetVertex(int32 index) const
 inline int32 b2DistanceProxy::GetSupport(const b2Vec2& d) const
 {
 	int32 bestIndex = 0;
-	float32 bestValue = b2Dot(m_vertices[0], d);
+	float bestValue = b2Dot(m_vertices[0], d);
 	for (int32 i = 1; i < m_count; ++i)
 	{
-		float32 value = b2Dot(m_vertices[i], d);
+		float value = b2Dot(m_vertices[i], d);
 		if (value > bestValue)
 		{
 			bestIndex = i;
@@ -149,10 +154,10 @@ inline int32 b2DistanceProxy::GetSupport(const b2Vec2& d) const
 inline const b2Vec2& b2DistanceProxy::GetSupportVertex(const b2Vec2& d) const
 {
 	int32 bestIndex = 0;
-	float32 bestValue = b2Dot(m_vertices[0], d);
+	float bestValue = b2Dot(m_vertices[0], d);
 	for (int32 i = 1; i < m_count; ++i)
 	{
-		float32 value = b2Dot(m_vertices[i], d);
+		float value = b2Dot(m_vertices[i], d);
 		if (value > bestValue)
 		{
 			bestIndex = i;

@@ -1,30 +1,33 @@
-/*
-* Copyright (c) 2006-2009 Erin Catto http://www.box2d.org
-* Copyright (c) 2015 Justin Hoffman https://github.com/jhoffman0x/Box2D-MT
-*
-* This software is provided 'as-is', without any express or implied
-* warranty.  In no event will the authors be held liable for any damages
-* arising from the use of this software.
-* Permission is granted to anyone to use this software for any purpose,
-* including commercial applications, and to alter it and redistribute it
-* freely, subject to the following restrictions:
-* 1. The origin of this software must not be misrepresented; you must not
-* claim that you wrote the original software. If you use this software
-* in a product, an acknowledgment in the product documentation would be
-* appreciated but is not required.
-* 2. Altered source versions must be plainly marked as such, and must not be
-* misrepresented as being the original software.
-* 3. This notice may not be removed or altered from any source distribution.
-*/
+// MIT License
+
+// Copyright (c) 2019 Erin Catto
+
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
 
 #ifndef B2_CONTACT_H
 #define B2_CONTACT_H
 
-#include "Box2D/Common/b2Math.h"
-#include "Box2D/Collision/b2Collision.h"
-#include "Box2D/Collision/Shapes/b2Shape.h"
-#include "Box2D/Collision/b2BroadPhase.h"
-#include "Box2D/Dynamics/b2Fixture.h"
+#include "b2_api.h"
+#include "b2_collision.h"
+#include "b2_fixture.h"
+#include "b2_math.h"
+#include "b2_shape.h"
 
 class b2Body;
 class b2Contact;
@@ -37,16 +40,22 @@ struct b2ContactManagerPerThreadData;
 
 /// Friction mixing law. The idea is to allow either fixture to drive the friction to zero.
 /// For example, anything slides on ice.
-inline float32 b2MixFriction(float32 friction1, float32 friction2)
+inline float b2MixFriction(float friction1, float friction2)
 {
 	return b2Sqrt(friction1 * friction2);
 }
 
 /// Restitution mixing law. The idea is allow for anything to bounce off an inelastic surface.
 /// For example, a superball bounces on anything.
-inline float32 b2MixRestitution(float32 restitution1, float32 restitution2)
+inline float b2MixRestitution(float restitution1, float restitution2)
 {
 	return restitution1 > restitution2 ? restitution1 : restitution2;
+}
+
+/// Restitution mixing law. This picks the lowest value.
+inline float b2MixRestitutionThreshold(float threshold1, float threshold2)
+{
+	return threshold1 < threshold2 ? threshold1 : threshold2;
 }
 
 typedef b2Contact* b2ContactCreateFcn(	b2Fixture* fixtureA, int32 indexA,
@@ -54,7 +63,7 @@ typedef b2Contact* b2ContactCreateFcn(	b2Fixture* fixtureA, int32 indexA,
 										b2BlockAllocator* allocator);
 typedef void b2ContactDestroyFcn(b2Contact* contact, b2BlockAllocator* allocator);
 
-struct b2ContactRegister
+struct B2_API b2ContactRegister
 {
 	b2ContactCreateFcn* createFcn;
 	b2ContactDestroyFcn* destroyFcn;
@@ -62,7 +71,7 @@ struct b2ContactRegister
 };
 
 /// Stores the proxy ids of a contact's fixtures in a consistent order.
-struct b2ContactProxyIds
+struct B2_API b2ContactProxyIds
 {
 	b2ContactProxyIds()
 		: low(b2BroadPhase::e_nullProxy)
@@ -81,7 +90,7 @@ struct b2ContactProxyIds
 /// is an edge. A contact edge belongs to a doubly linked list
 /// maintained in each attached body. Each contact has two contact
 /// nodes, one for each attached body.
-struct b2ContactEdge
+struct B2_API b2ContactEdge
 {
 	b2Body* other;			///< provides quick access to the other body attached.
 	b2Contact* contact;		///< the contact
@@ -92,7 +101,7 @@ struct b2ContactEdge
 /// The class manages contact between two shapes. A contact exists for each overlapping
 /// AABB in the broad-phase (except if filtered). Therefore a contact object may exist
 /// that has no contact points.
-class b2Contact
+class B2_API b2Contact
 {
 public:
 
@@ -135,29 +144,39 @@ public:
 
 	/// Override the default friction mixture. You can call this in b2ContactListener::PreSolve.
 	/// This value persists until set or reset.
-	void SetFriction(float32 friction);
+	void SetFriction(float friction);
 
 	/// Get the friction.
-	float32 GetFriction() const;
+	float GetFriction() const;
 
 	/// Reset the friction mixture to the default value.
 	void ResetFriction();
 
 	/// Override the default restitution mixture. You can call this in b2ContactListener::PreSolve.
 	/// The value persists until you set or reset.
-	void SetRestitution(float32 restitution);
+	void SetRestitution(float restitution);
 
 	/// Get the restitution.
-	float32 GetRestitution() const;
+	float GetRestitution() const;
 
 	/// Reset the restitution to the default value.
 	void ResetRestitution();
 
+	/// Override the default restitution velocity threshold mixture. You can call this in b2ContactListener::PreSolve.
+	/// The value persists until you set or reset.
+	void SetRestitutionThreshold(float threshold);
+
+	/// Get the restitution threshold.
+	float GetRestitutionThreshold() const;
+
+	/// Reset the restitution threshold to the default value.
+	void ResetRestitutionThreshold();
+
 	/// Set the desired tangent speed for a conveyor belt behavior. In meters per second.
-	void SetTangentSpeed(float32 speed);
+	void SetTangentSpeed(float speed);
 
 	/// Get the desired tangent speed. In meters per second.
-	float32 GetTangentSpeed() const;
+	float GetTangentSpeed() const;
 
 	/// Evaluate this contact with your own manifold and transforms.
 	virtual void Evaluate(b2Manifold* manifold, const b2Transform& xfA, const b2Transform& xfB) = 0;
@@ -230,6 +249,10 @@ protected:
 
 	uint32 m_flags;
 
+	// World pool and list pointers.
+	b2Contact* m_prev;
+	b2Contact* m_next;
+
 	int32 m_managerIndex;
 
 	// Nodes for connecting bodies.
@@ -247,16 +270,13 @@ protected:
 	b2Manifold m_manifold;
 
 	int32 m_toiCount;
-	float32 m_toi;
+	float m_toi;
 
-	float32 m_friction;
-	float32 m_restitution;
+	float m_friction;
+	float m_restitution;
+	float m_restitutionThreshold;
 
-	float32 m_tangentSpeed;
-
-	// World pool and list pointers.
-	b2Contact* m_prev;
-	b2Contact* m_next;
+	float m_tangentSpeed;
 };
 
 inline bool operator==(const b2ContactProxyIds& lhs, const b2ContactProxyIds& rhs)
@@ -361,12 +381,12 @@ inline int32 b2Contact::GetChildIndexB() const
 	return m_indexB;
 }
 
-inline void b2Contact::SetFriction(float32 friction)
+inline void b2Contact::SetFriction(float friction)
 {
 	m_friction = friction;
 }
 
-inline float32 b2Contact::GetFriction() const
+inline float b2Contact::GetFriction() const
 {
 	return m_friction;
 }
@@ -376,12 +396,12 @@ inline void b2Contact::ResetFriction()
 	m_friction = b2MixFriction(m_fixtureA->m_friction, m_fixtureB->m_friction);
 }
 
-inline void b2Contact::SetRestitution(float32 restitution)
+inline void b2Contact::SetRestitution(float restitution)
 {
 	m_restitution = restitution;
 }
 
-inline float32 b2Contact::GetRestitution() const
+inline float b2Contact::GetRestitution() const
 {
 	return m_restitution;
 }
@@ -391,12 +411,27 @@ inline void b2Contact::ResetRestitution()
 	m_restitution = b2MixRestitution(m_fixtureA->m_restitution, m_fixtureB->m_restitution);
 }
 
-inline void b2Contact::SetTangentSpeed(float32 speed)
+inline void b2Contact::SetRestitutionThreshold(float threshold)
+{
+	m_restitutionThreshold = threshold;
+}
+
+inline float b2Contact::GetRestitutionThreshold() const
+{
+	return m_restitutionThreshold;
+}
+
+inline void b2Contact::ResetRestitutionThreshold()
+{
+	m_restitutionThreshold = b2MixRestitutionThreshold(m_fixtureA->m_restitutionThreshold, m_fixtureB->m_restitutionThreshold);
+}
+
+inline void b2Contact::SetTangentSpeed(float speed)
 {
 	m_tangentSpeed = speed;
 }
 
-inline float32 b2Contact::GetTangentSpeed() const
+inline float b2Contact::GetTangentSpeed() const
 {
 	return m_tangentSpeed;
 }

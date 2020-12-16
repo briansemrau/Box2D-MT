@@ -1,25 +1,30 @@
-/*
-* Copyright (c) 2006-2009 Erin Catto http://www.box2d.org
-*
-* This software is provided 'as-is', without any express or implied
-* warranty.  In no event will the authors be held liable for any damages
-* arising from the use of this software.
-* Permission is granted to anyone to use this software for any purpose,
-* including commercial applications, and to alter it and redistribute it
-* freely, subject to the following restrictions:
-* 1. The origin of this software must not be misrepresented; you must not
-* claim that you wrote the original software. If you use this software
-* in a product, an acknowledgment in the product documentation would be
-* appreciated but is not required.
-* 2. Altered source versions must be plainly marked as such, and must not be
-* misrepresented as being the original software.
-* 3. This notice may not be removed or altered from any source distribution.
-*/
+// MIT License
+
+// Copyright (c) 2019 Erin Catto
+
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
 
 #ifndef B2_WORLD_CALLBACKS_H
 #define B2_WORLD_CALLBACKS_H
 
-#include "Box2D/Common/b2Settings.h"
+#include "b2_api.h"
+#include "b2_settings.h"
 
 struct b2Vec2;
 struct b2Transform;
@@ -33,7 +38,7 @@ struct b2Manifold;
 /// Joints and fixtures are destroyed when their associated
 /// body is destroyed. Implement this listener so that you
 /// may nullify references to these joints and shapes.
-class b2DestructionListener
+class B2_API b2DestructionListener
 {
 public:
 	virtual ~b2DestructionListener() {}
@@ -49,7 +54,7 @@ public:
 
 /// Implement this class to provide collision filtering. In other words, you can implement
 /// this class if you want finer control over contact creation.
-class b2ContactFilter
+class B2_API b2ContactFilter
 {
 public:
 	virtual ~b2ContactFilter() {}
@@ -65,10 +70,10 @@ public:
 /// Contact impulses for reporting. Impulses are used instead of forces because
 /// sub-step forces may approach infinity for rigid body collisions. These
 /// match up one-to-one with the contact points in b2Manifold.
-struct b2ContactImpulse
+struct B2_API b2ContactImpulse
 {
-	float32 normalImpulses[b2_maxManifoldPoints];
-	float32 tangentImpulses[b2_maxManifoldPoints];
+	float normalImpulses[b2_maxManifoldPoints];
+	float tangentImpulses[b2_maxManifoldPoints];
 	int32 count;
 };
 
@@ -85,7 +90,7 @@ struct b2ContactImpulse
 /// functions are called in a nondeterministic order from multiple threads simultaneously.
 /// Note: The non-immediate callbacks are always called in a deterministic order from
 /// a single thread.
-class b2ContactListener
+class B2_API b2ContactListener
 {
 public:
 	virtual ~b2ContactListener() {}
@@ -175,7 +180,7 @@ public:
 
 /// Callback class for AABB queries.
 /// See b2World::Query
-class b2QueryCallback
+class B2_API b2QueryCallback
 {
 public:
 	virtual ~b2QueryCallback() {}
@@ -187,7 +192,7 @@ public:
 
 /// Callback class for ray casts.
 /// See b2World::RayCast
-class b2RayCastCallback
+class B2_API b2RayCastCallback
 {
 public:
 	virtual ~b2RayCastCallback() {}
@@ -201,10 +206,11 @@ public:
 	/// @param fixture the fixture hit by the ray
 	/// @param point the point of initial intersection
 	/// @param normal the normal vector at the point of intersection
+	/// @param fraction the fraction along the ray at the point of intersection
 	/// @return -1 to filter, 0 to terminate, fraction to clip the ray for
 	/// closest hit, 1 to continue
-	virtual float32 ReportFixture(	b2Fixture* fixture, const b2Vec2& point,
-									const b2Vec2& normal, float32 fraction) = 0;
+	virtual float ReportFixture(	b2Fixture* fixture, const b2Vec2& point,
+									const b2Vec2& normal, float fraction) = 0;
 };
 
 #endif

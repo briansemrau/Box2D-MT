@@ -1,31 +1,36 @@
-/*
-* Copyright (c) 2009 Erin Catto http://www.box2d.org
-*
-* This software is provided 'as-is', without any express or implied
-* warranty.  In no event will the authors be held liable for any damages
-* arising from the use of this software.
-* Permission is granted to anyone to use this software for any purpose,
-* including commercial applications, and to alter it and redistribute it
-* freely, subject to the following restrictions:
-* 1. The origin of this software must not be misrepresented; you must not
-* claim that you wrote the original software. If you use this software
-* in a product, an acknowledgment in the product documentation would be
-* appreciated but is not required.
-* 2. Altered source versions must be plainly marked as such, and must not be
-* misrepresented as being the original software.
-* 3. This notice may not be removed or altered from any source distribution.
-*/
+// MIT License
+
+// Copyright (c) 2019 Erin Catto
+
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
 
 #ifndef B2_DYNAMIC_TREE_H
 #define B2_DYNAMIC_TREE_H
 
-#include "Box2D/Collision/b2Collision.h"
-#include "Box2D/Common/b2GrowableStack.h"
+#include "b2_api.h"
+#include "b2_collision.h"
+#include "b2_growable_stack.h"
 
 #define b2_nullNode (-1)
 
 /// A node in the dynamic tree. The client does not interact with this directly.
-struct b2TreeNode
+struct B2_API b2TreeNode
 {
 	bool IsLeaf() const
 	{
@@ -48,6 +53,8 @@ struct b2TreeNode
 
 	// leaf = 0, free node = -1
 	int32 height;
+
+	bool moved;
 };
 
 /// A dynamic AABB tree broad-phase, inspired by Nathanael Presson's btDbvt.
@@ -58,7 +65,7 @@ struct b2TreeNode
 /// object to move by small amounts without triggering a tree update.
 ///
 /// Nodes are pooled and relocatable, so we use node indices rather than pointers.
-class b2DynamicTree
+class B2_API b2DynamicTree
 {
 public:
 	/// Constructing the tree initializes the node pool.
@@ -82,6 +89,9 @@ public:
 	/// Get proxy user data.
 	/// @return the proxy user data or 0 if the id is invalid.
 	void* GetUserData(int32 proxyId) const;
+
+	bool WasMoved(int32 proxyId) const;
+	void ClearMoved(int32 proxyId);
 
 	/// Get the fat AABB for a proxy.
 	const b2AABB& GetFatAABB(int32 proxyId) const;
@@ -113,7 +123,7 @@ public:
 	int32 GetMaxBalance() const;
 
 	/// Get the ratio of the sum of the node areas to the root area.
-	float32 GetAreaRatio() const;
+	float GetAreaRatio() const;
 
 	/// Build an optimal tree. Very expensive. For testing.
 	void RebuildBottomUp();
@@ -147,9 +157,6 @@ private:
 
 	int32 m_freeList;
 
-	/// This is used to incrementally traverse the tree for re-balancing.
-	uint32 m_path;
-
 	int32 m_insertionCount;
 };
 
@@ -159,6 +166,18 @@ inline void* b2DynamicTree::GetUserData(int32 proxyId) const
 	return m_nodes[proxyId].userData;
 }
 
+inline bool b2DynamicTree::WasMoved(int32 proxyId) const
+{
+	b2Assert(0 <= proxyId && proxyId < m_nodeCapacity);
+	return m_nodes[proxyId].moved;
+}
+
+inline void b2DynamicTree::ClearMoved(int32 proxyId)
+{
+	b2Assert(0 <= proxyId && proxyId < m_nodeCapacity);
+	m_nodes[proxyId].moved = false;
+}
+
 inline const b2AABB& b2DynamicTree::GetFatAABB(int32 proxyId) const
 {
 	b2Assert(0 <= proxyId && proxyId < m_nodeCapacity);
@@ -166,7 +185,7 @@ inline const b2AABB& b2DynamicTree::GetFatAABB(int32 proxyId) const
 }
 
 template <typename T>
-b2_forceInline void b2DynamicTree::Query(T* callback, const b2AABB& aabb) const
+inline void b2DynamicTree::Query(T* callback, const b2AABB& aabb) const
 {
 	b2GrowableStack<int32, 256> stack;
 	stack.Push(m_root);
@@ -216,7 +235,7 @@ inline void b2DynamicTree::RayCast(T* callback, const b2RayCastInput& input) con
 	// Separating axis for segment (Gino, p80).
 	// |dot(v, p1 - c)| > dot(|v|, h)
 
-	float32 maxFraction = input.maxFraction;
+	float maxFraction = input.maxFraction;
 
 	// Build a bounding box for the segment.
 	b2AABB segmentAABB;
@@ -248,7 +267,7 @@ inline void b2DynamicTree::RayCast(T* callback, const b2RayCastInput& input) con
 		// |dot(v, p1 - c)| > dot(|v|, h)
 		b2Vec2 c = node->aabb.GetCenter();
 		b2Vec2 h = node->aabb.GetExtents();
-		float32 separation = b2Abs(b2Dot(v, p1 - c)) - b2Dot(abs_v, h);
+		float separation = b2Abs(b2Dot(v, p1 - c)) - b2Dot(abs_v, h);
 		if (separation > 0.0f)
 		{
 			continue;
@@ -261,7 +280,7 @@ inline void b2DynamicTree::RayCast(T* callback, const b2RayCastInput& input) con
 			subInput.p2 = input.p2;
 			subInput.maxFraction = maxFraction;
 
-			float32 value = callback->RayCastCallback(subInput, nodeId);
+			float value = callback->RayCastCallback(subInput, nodeId);
 
 			if (value == 0.0f)
 			{

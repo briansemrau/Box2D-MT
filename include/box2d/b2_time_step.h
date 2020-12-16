@@ -1,71 +1,75 @@
-/*
-* Copyright (c) 2006-2011 Erin Catto http://www.box2d.org
-*
-* This software is provided 'as-is', without any express or implied
-* warranty.  In no event will the authors be held liable for any damages
-* arising from the use of this software.
-* Permission is granted to anyone to use this software for any purpose,
-* including commercial applications, and to alter it and redistribute it
-* freely, subject to the following restrictions:
-* 1. The origin of this software must not be misrepresented; you must not
-* claim that you wrote the original software. If you use this software
-* in a product, an acknowledgment in the product documentation would be
-* appreciated but is not required.
-* 2. Altered source versions must be plainly marked as such, and must not be
-* misrepresented as being the original software.
-* 3. This notice may not be removed or altered from any source distribution.
-*/
+// MIT License
 
+// Copyright (c) 2019 Erin Catto
+
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
 #ifndef B2_TIME_STEP_H
 #define B2_TIME_STEP_H
 
-#include "Box2D/Common/b2Math.h"
+#include "b2_api.h"
+#include "b2_math.h"
 
 /// Profiling data. Times are in milliseconds.
-struct b2Profile
+struct B2_API b2Profile
 {
-	float32 step;
-	float32 collide;
-	float32 solve;
-	float32 solveTraversal;
-	float32 solveInit;
-	float32 solveVelocity;
-	float32 solvePosition;
-	float32 solveTOI;
-	float32 solveTOIFindMinContact;
-	float32 broadphase;
-	float32 broadphaseSyncFixtures;
-	float32 broadphaseFindContacts;
-	float32 locking;
+	float step;
+	float collide;
+	float solve;
+	float solveTraversal;
+	float solveInit;
+	float solveVelocity;
+	float solvePosition;
+	float solveTOI;
+	float solveTOIFindMinContact;
+	float broadphase;
+	float broadphaseSyncFixtures;
+	float broadphaseFindContacts;
+	float locking;
 };
 
 /// This is an internal structure.
-struct b2TimeStep
+struct B2_API b2TimeStep
 {
-	float32 dt;			// time step
-	float32 inv_dt;		// inverse time step (0 if dt == 0).
-	float32 dtRatio;	// dt * inv_dt0
+	float dt;			// time step
+	float inv_dt;		// inverse time step (0 if dt == 0).
+	float dtRatio;	// dt * inv_dt0
 	int32 velocityIterations;
 	int32 positionIterations;
 	bool warmStarting;
 };
 
 /// This is an internal structure.
-struct b2Position
+struct B2_API b2Position
 {
 	b2Vec2 c;
-	float32 a;
+	float a;
 };
 
 /// This is an internal structure.
-struct b2Velocity
+struct B2_API b2Velocity
 {
 	b2Vec2 v;
-	float32 w;
+	float w;
 };
 
 /// Solver Data
-struct b2SolverData
+struct B2_API b2SolverData
 {
 	b2TimeStep step;
 	b2Position* positions;
