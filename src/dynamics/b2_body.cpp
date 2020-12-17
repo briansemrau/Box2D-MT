@@ -1,27 +1,32 @@
-/*
-* Copyright (c) 2006-2007 Erin Catto http://www.box2d.org
-* Copyright (c) 2015 Justin Hoffman https://github.com/jhoffman0x/Box2D-MT
-*
-* This software is provided 'as-is', without any express or implied
-* warranty.  In no event will the authors be held liable for any damages
-* arising from the use of this software.
-* Permission is granted to anyone to use this software for any purpose,
-* including commercial applications, and to alter it and redistribute it
-* freely, subject to the following restrictions:
-* 1. The origin of this software must not be misrepresented; you must not
-* claim that you wrote the original software. If you use this software
-* in a product, an acknowledgment in the product documentation would be
-* appreciated but is not required.
-* 2. Altered source versions must be plainly marked as such, and must not be
-* misrepresented as being the original software.
-* 3. This notice may not be removed or altered from any source distribution.
-*/
+// MIT License
 
-#include "Box2D/Dynamics/b2Body.h"
-#include "Box2D/Dynamics/b2Fixture.h"
-#include "Box2D/Dynamics/b2World.h"
-#include "Box2D/Dynamics/Contacts/b2Contact.h"
-#include "Box2D/Dynamics/Joints/b2Joint.h"
+// Copyright (c) 2019 Erin Catto
+
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
+#include "box2d/b2_body.h"
+#include "box2d/b2_contact.h"
+#include "box2d/b2_fixture.h"
+#include "box2d/b2_joint.h"
+#include "box2d/b2_world.h"
+
+#include <new>
 
 b2Body::b2Body(const b2BodyDef* bd, b2World* world)
 {
@@ -46,13 +51,13 @@ b2Body::b2Body(const b2BodyDef* bd, b2World* world)
 	{
 		m_flags |= e_autoSleepFlag;
 	}
-	if (bd->awake)
+	if (bd->awake && bd->type != b2_staticBody)
 	{
 		m_flags |= e_awakeFlag;
 	}
-	if (bd->active)
+	if (bd->enabled)
 	{
-		m_flags |= e_activeFlag;
+		m_flags |= e_enabledFlag;
 	}
 
 	m_world = world;
@@ -86,16 +91,8 @@ b2Body::b2Body(const b2BodyDef* bd, b2World* world)
 
 	m_type = bd->type;
 
-	if (GetType() == b2_dynamicBody)
-	{
-		m_mass = 1.0f;
-		m_invMass = 1.0f;
-	}
-	else
-	{
-		m_mass = 0.0f;
-		m_invMass = 0.0f;
-	}
+	m_mass = 0.0f;
+	m_invMass = 0.0f;
 
 	m_I = 0.0f;
 	m_invI = 0.0f;
@@ -123,7 +120,7 @@ void b2Body::SetType(b2BodyType type)
 		return;
 	}
 
-	if (GetType() == type)
+	if (m_type == type)
 	{
 		return;
 	}
@@ -139,16 +136,17 @@ void b2Body::SetType(b2BodyType type)
 		m_world->m_nonStaticBodies.push_back(this);
 	}
 
-	m_type = (uint16)type;
+	m_type = type;
 
 	ResetMassData();
 
-	if (GetType() == b2_staticBody)
+	if (m_type == b2_staticBody)
 	{
 		m_linearVelocity.SetZero();
 		m_angularVelocity = 0.0f;
 		m_sweep.a0 = m_sweep.a;
 		m_sweep.c0 = m_sweep.c;
+		m_flags &= ~e_awakeFlag;
 		SynchronizeFixtures();
 
 		// Remove from non static bodies.
@@ -201,7 +199,7 @@ b2Fixture* b2Body::CreateFixture(const b2FixtureDef* def)
 	b2Fixture* fixture = new (memory) b2Fixture;
 	fixture->Create(allocator, this, def);
 
-	if (m_flags & e_activeFlag)
+	if (m_flags & e_enabledFlag)
 	{
 		b2BroadPhase* broadPhase = &m_world->m_contactManager.m_broadPhase;
 		fixture->CreateProxies(broadPhase, m_xf);
@@ -221,12 +219,12 @@ b2Fixture* b2Body::CreateFixture(const b2FixtureDef* def)
 
 	// Let the world know we have a new fixture. This will cause new contacts
 	// to be created at the beginning of the next time step.
-	m_world->m_flags |= b2World::e_newFixture;
+	m_world->m_newContacts = true;
 
 	return fixture;
 }
 
-b2Fixture* b2Body::CreateFixture(const b2Shape* shape, float32 density)
+b2Fixture* b2Body::CreateFixture(const b2Shape* shape, float density)
 {
 	b2FixtureDef def;
 	def.shape = shape;
@@ -237,7 +235,7 @@ b2Fixture* b2Body::CreateFixture(const b2Shape* shape, float32 density)
 
 void b2Body::DestroyFixture(b2Fixture* fixture)
 {
-	if (fixture == nullptr)
+	if (fixture == NULL)
 	{
 		return;
 	}
@@ -289,7 +287,7 @@ void b2Body::DestroyFixture(b2Fixture* fixture)
 
 	b2BlockAllocator* allocator = &m_world->m_blockAllocator;
 
-	if (m_flags & e_activeFlag)
+	if (m_flags & e_enabledFlag)
 	{
 		b2BroadPhase* broadPhase = &m_world->m_contactManager.m_broadPhase;
 		fixture->DestroyProxies(broadPhase);
@@ -322,7 +320,7 @@ void b2Body::ResetMassData()
 	m_sweep.localCenter.SetZero();
 
 	// Static and kinematic bodies have zero mass.
-	if (GetType() == b2_staticBody || GetType() == b2_kinematicBody)
+	if (m_type == b2_staticBody || m_type == b2_kinematicBody)
 	{
 		m_sweep.c0 = m_xf.p;
 		m_sweep.c = m_xf.p;
@@ -330,7 +328,7 @@ void b2Body::ResetMassData()
 		return;
 	}
 
-	b2Assert(GetType() == b2_dynamicBody);
+	b2Assert(m_type == b2_dynamicBody);
 
 	// Accumulate mass over all fixtures.
 	b2Vec2 localCenter = b2Vec2_zero;
@@ -353,12 +351,6 @@ void b2Body::ResetMassData()
 	{
 		m_invMass = 1.0f / m_mass;
 		localCenter *= m_invMass;
-	}
-	else
-	{
-		// Force all dynamic bodies to have a positive mass.
-		m_mass = 1.0f;
-		m_invMass = 1.0f;
 	}
 
 	if (m_I > 0.0f && (m_flags & e_fixedRotationFlag) == 0)
@@ -392,7 +384,7 @@ void b2Body::SetMassData(const b2MassData* massData)
 		return;
 	}
 
-	if (GetType() != b2_dynamicBody)
+	if (m_type != b2_dynamicBody)
 	{
 		return;
 	}
@@ -428,7 +420,7 @@ void b2Body::SetMassData(const b2MassData* massData)
 bool b2Body::ShouldCollide(const b2Body* other) const
 {
 	// At least one body should be dynamic.
-	if (GetType() != b2_dynamicBody && other->GetType() != b2_dynamicBody)
+	if (m_type != b2_dynamicBody && other->m_type != b2_dynamicBody)
 	{
 		return false;
 	}
@@ -448,7 +440,7 @@ bool b2Body::ShouldCollide(const b2Body* other) const
 	return true;
 }
 
-void b2Body::SetTransform(const b2Vec2& position, float32 angle)
+void b2Body::SetTransform(const b2Vec2& position, float angle)
 {
 	b2Assert(m_world->IsLocked() == false);
 	if (m_world->IsLocked() == true)
@@ -470,6 +462,9 @@ void b2Body::SetTransform(const b2Vec2& position, float32 angle)
 	{
 		f->Synchronize(broadPhase, m_xf, m_xf);
 	}
+
+	// Check for new contacts the next step
+	m_world->m_newContacts = true;
 }
 
 void b2Body::SynchronizeFixtures()
@@ -477,14 +472,25 @@ void b2Body::SynchronizeFixtures()
 	// This can only be called internally so we don't expect this to be possible.
 	b2Assert(m_world->IsMtLocked() == false);
 
-	b2Transform xf1;
-	xf1.q.Set(m_sweep.a0);
-	xf1.p = m_sweep.c0 - b2Mul(xf1.q, m_sweep.localCenter);
-
 	b2BroadPhase* broadPhase = &m_world->m_contactManager.m_broadPhase;
-	for (b2Fixture* f = m_fixtureList; f; f = f->m_next)
+	
+	if (m_flags & b2Body::e_awakeFlag)
 	{
-		f->Synchronize(broadPhase, xf1, m_xf);
+		b2Transform xf1;
+		xf1.q.Set(m_sweep.a0);
+		xf1.p = m_sweep.c0 - b2Mul(xf1.q, m_sweep.localCenter);
+
+		for (b2Fixture* f = m_fixtureList; f; f = f->m_next)
+		{
+			f->Synchronize(broadPhase, xf1, m_xf);
+		}
+	}
+	else
+	{
+		for (b2Fixture* f = m_fixtureList; f; f = f->m_next)
+		{
+			f->Synchronize(broadPhase, m_xf, m_xf);
+		}
 	}
 }
 
@@ -493,23 +499,18 @@ void b2Body::RecalculateSleeping()
 	m_world->RecalculateSleeping(this);
 }
 
-void b2Body::SetActive(bool flag)
+void b2Body::SetEnabled(bool flag)
 {
 	b2Assert(m_world->IsLocked() == false);
 
-	if (flag == IsActive())
-	{
-		return;
-	}
-
-	if (m_world->IsLocked() == true)
+	if (flag == IsEnabled())
 	{
 		return;
 	}
 
 	if (flag)
 	{
-		m_flags |= e_activeFlag;
+		m_flags |= e_enabledFlag;
 
 		// Create all proxies.
 		b2BroadPhase* broadPhase = &m_world->m_contactManager.m_broadPhase;
@@ -518,11 +519,12 @@ void b2Body::SetActive(bool flag)
 			f->CreateProxies(broadPhase, m_xf);
 		}
 
-		// Contacts are created the next time step.
+		// Contacts are created at the beginning of the next
+		m_world->m_newContacts = true;
 	}
 	else
 	{
-		m_flags &= ~e_activeFlag;
+		m_flags &= ~e_enabledFlag;
 
 		// Destroy all proxies.
 		b2BroadPhase* broadPhase = &m_world->m_contactManager.m_broadPhase;
@@ -633,28 +635,31 @@ void b2Body::Dump()
 {
 	int32 bodyIndex = GetIslandIndex(0);
 
-	b2Log("{\n");
-	b2Log("  b2BodyDef bd;\n");
-	b2Log("  bd.type = b2BodyType(%d);\n", m_type);
-	b2Log("  bd.position.Set(%.15lef, %.15lef);\n", m_xf.p.x, m_xf.p.y);
-	b2Log("  bd.angle = %.15lef;\n", m_sweep.a);
-	b2Log("  bd.linearVelocity.Set(%.15lef, %.15lef);\n", m_linearVelocity.x, m_linearVelocity.y);
-	b2Log("  bd.angularVelocity = %.15lef;\n", m_angularVelocity);
-	b2Log("  bd.linearDamping = %.15lef;\n", m_linearDamping);
-	b2Log("  bd.angularDamping = %.15lef;\n", m_angularDamping);
-	b2Log("  bd.allowSleep = bool(%d);\n", m_flags & e_autoSleepFlag);
-	b2Log("  bd.awake = bool(%d);\n", m_flags & e_awakeFlag);
-	b2Log("  bd.fixedRotation = bool(%d);\n", m_flags & e_fixedRotationFlag);
-	b2Log("  bd.bullet = bool(%d);\n", m_flags & e_bulletFlag);
-	b2Log("  bd.active = bool(%d);\n", m_flags & e_activeFlag);
-	b2Log("  bd.gravityScale = %.15lef;\n", m_gravityScale);
-	b2Log("  bodies[%d] = m_world->CreateBody(&bd);\n", m_islandIndex);
-	b2Log("\n");
+	// %.9g is sufficient to save and load the same value using text
+	// FLT_DECIMAL_DIG == 9
+
+	b2Dump("{\n");
+	b2Dump("  b2BodyDef bd;\n");
+	b2Dump("  bd.type = b2BodyType(%d);\n", m_type);
+	b2Dump("  bd.position.Set(%.9g, %.9g);\n", m_xf.p.x, m_xf.p.y);
+	b2Dump("  bd.angle = %.9g;\n", m_sweep.a);
+	b2Dump("  bd.linearVelocity.Set(%.9g, %.9g);\n", m_linearVelocity.x, m_linearVelocity.y);
+	b2Dump("  bd.angularVelocity = %.9g;\n", m_angularVelocity);
+	b2Dump("  bd.linearDamping = %.9g;\n", m_linearDamping);
+	b2Dump("  bd.angularDamping = %.9g;\n", m_angularDamping);
+	b2Dump("  bd.allowSleep = bool(%d);\n", m_flags & e_autoSleepFlag);
+	b2Dump("  bd.awake = bool(%d);\n", m_flags & e_awakeFlag);
+	b2Dump("  bd.fixedRotation = bool(%d);\n", m_flags & e_fixedRotationFlag);
+	b2Dump("  bd.bullet = bool(%d);\n", m_flags & e_bulletFlag);
+	b2Dump("  bd.enabled = bool(%d);\n", m_flags & e_enabledFlag);
+	b2Dump("  bd.gravityScale = %.9g;\n", m_gravityScale);
+	b2Dump("  bodies[%d] = m_world->CreateBody(&bd);\n", m_islandIndex);
+	b2Dump("\n");
 	for (b2Fixture* f = m_fixtureList; f; f = f->m_next)
 	{
-		b2Log("  {\n");
+		b2Dump("  {\n");
 		f->Dump(bodyIndex);
-		b2Log("  }\n");
+		b2Dump("  }\n");
 	}
-	b2Log("}\n");
+	b2Dump("}\n");
 }

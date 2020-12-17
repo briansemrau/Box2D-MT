@@ -1,25 +1,28 @@
-/*
-* Copyright (c) 2006-2012 Erin Catto http://www.box2d.org
-* Copyright (c) 2015 Justin Hoffman https://github.com/jhoffman0x/Box2D-MT
-*
-* This software is provided 'as-is', without any express or implied
-* warranty.  In no event will the authors be held liable for any damages
-* arising from the use of this software.
-* Permission is granted to anyone to use this software for any purpose,
-* including commercial applications, and to alter it and redistribute it
-* freely, subject to the following restrictions:
-* 1. The origin of this software must not be misrepresented; you must not
-* claim that you wrote the original software. If you use this software
-* in a product, an acknowledgment in the product documentation would be
-* appreciated but is not required.
-* 2. Altered source versions must be plainly marked as such, and must not be
-* misrepresented as being the original software.
-* 3. This notice may not be removed or altered from any source distribution.
-*/
+// MIT License
 
-#include "Box2D/Dynamics/Joints/b2MotorJoint.h"
-#include "Box2D/Dynamics/b2Body.h"
-#include "Box2D/Dynamics/b2TimeStep.h"
+// Copyright (c) 2019 Erin Catto
+
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
+#include "box2d/b2_body.h"
+#include "box2d/b2_motor_joint.h"
+#include "box2d/b2_time_step.h"
 
 // Point-to-point constraint
 // Cdot = v2 - v1
@@ -43,8 +46,8 @@ void b2MotorJointDef::Initialize(b2Body* bA, b2Body* bB)
 	b2Vec2 xB = bodyB->GetPosition();
 	linearOffset = bodyA->GetLocalPoint(xB);
 
-	float32 angleA = bodyA->GetAngle();
-	float32 angleB = bodyB->GetAngle();
+	float angleA = bodyA->GetAngle();
+	float angleB = bodyB->GetAngle();
 	angularOffset = angleB - angleA;
 }
 
@@ -74,14 +77,14 @@ void b2MotorJoint::InitVelocityConstraints(const b2SolverData& data)
 	m_invIB = m_bodyB->m_invI;
 
 	b2Vec2 cA = data.positions[m_indexA].c;
-	float32 aA = data.positions[m_indexA].a;
+	float aA = data.positions[m_indexA].a;
 	b2Vec2 vA = data.velocities[m_indexA].v;
-	float32 wA = data.velocities[m_indexA].w;
+	float wA = data.velocities[m_indexA].w;
 
 	b2Vec2 cB = data.positions[m_indexB].c;
-	float32 aB = data.positions[m_indexB].a;
+	float aB = data.positions[m_indexB].a;
 	b2Vec2 vB = data.velocities[m_indexB].v;
-	float32 wB = data.velocities[m_indexB].w;
+	float wB = data.velocities[m_indexB].w;
 
 	b2Rot qA(aA), qB(aB);
 
@@ -97,10 +100,8 @@ void b2MotorJoint::InitVelocityConstraints(const b2SolverData& data)
 	//     [  -r1y*iA*r1x-r2y*iB*r2x, mA+r1x^2*iA+mB+r2x^2*iB,           r1x*iA+r2x*iB]
 	//     [          -r1y*iA-r2y*iB,           r1x*iA+r2x*iB,                   iA+iB]
 
-
-
-	float32 mA = m_invMassA, mB = m_invMassB;
-	float32 iA = m_invIA, iB = m_invIB;
+	float mA = m_invMassA, mB = m_invMassB;
+	float iA = m_invIA, iB = m_invIB;
 
 	// Upper 2 by 2 of K for point to point
 	b2Mat22 K;
@@ -147,23 +148,23 @@ void b2MotorJoint::InitVelocityConstraints(const b2SolverData& data)
 void b2MotorJoint::SolveVelocityConstraints(const b2SolverData& data)
 {
 	b2Vec2 vA = data.velocities[m_indexA].v;
-	float32 wA = data.velocities[m_indexA].w;
+	float wA = data.velocities[m_indexA].w;
 	b2Vec2 vB = data.velocities[m_indexB].v;
-	float32 wB = data.velocities[m_indexB].w;
+	float wB = data.velocities[m_indexB].w;
 
-	float32 mA = m_invMassA, mB = m_invMassB;
-	float32 iA = m_invIA, iB = m_invIB;
+	float mA = m_invMassA, mB = m_invMassB;
+	float iA = m_invIA, iB = m_invIB;
 
-	float32 h = data.step.dt;
-	float32 inv_h = data.step.inv_dt;
+	float h = data.step.dt;
+	float inv_h = data.step.inv_dt;
 
 	// Solve angular friction
 	{
-		float32 Cdot = wB - wA + inv_h * m_correctionFactor * m_angularError;
-		float32 impulse = -m_angularMass * Cdot;
+		float Cdot = wB - wA + inv_h * m_correctionFactor * m_angularError;
+		float impulse = -m_angularMass * Cdot;
 
-		float32 oldImpulse = m_angularImpulse;
-		float32 maxImpulse = h * m_maxTorque;
+		float oldImpulse = m_angularImpulse;
+		float maxImpulse = h * m_maxTorque;
 		m_angularImpulse = b2Clamp(m_angularImpulse + impulse, -maxImpulse, maxImpulse);
 		impulse = m_angularImpulse - oldImpulse;
 
@@ -179,7 +180,7 @@ void b2MotorJoint::SolveVelocityConstraints(const b2SolverData& data)
 		b2Vec2 oldImpulse = m_linearImpulse;
 		m_linearImpulse += impulse;
 
-		float32 maxImpulse = h * m_maxForce;
+		float maxImpulse = h * m_maxForce;
 
 		if (m_linearImpulse.LengthSquared() > maxImpulse * maxImpulse)
 		{
@@ -219,45 +220,45 @@ b2Vec2 b2MotorJoint::GetAnchorB() const
 	return m_bodyB->GetPosition();
 }
 
-b2Vec2 b2MotorJoint::GetReactionForce(float32 inv_dt) const
+b2Vec2 b2MotorJoint::GetReactionForce(float inv_dt) const
 {
 	return inv_dt * m_linearImpulse;
 }
 
-float32 b2MotorJoint::GetReactionTorque(float32 inv_dt) const
+float b2MotorJoint::GetReactionTorque(float inv_dt) const
 {
 	return inv_dt * m_angularImpulse;
 }
 
-void b2MotorJoint::SetMaxForce(float32 force)
+void b2MotorJoint::SetMaxForce(float force)
 {
 	b2Assert(b2IsValid(force) && force >= 0.0f);
 	m_maxForce = force;
 }
 
-float32 b2MotorJoint::GetMaxForce() const
+float b2MotorJoint::GetMaxForce() const
 {
 	return m_maxForce;
 }
 
-void b2MotorJoint::SetMaxTorque(float32 torque)
+void b2MotorJoint::SetMaxTorque(float torque)
 {
 	b2Assert(b2IsValid(torque) && torque >= 0.0f);
 	m_maxTorque = torque;
 }
 
-float32 b2MotorJoint::GetMaxTorque() const
+float b2MotorJoint::GetMaxTorque() const
 {
 	return m_maxTorque;
 }
 
-void b2MotorJoint::SetCorrectionFactor(float32 factor)
+void b2MotorJoint::SetCorrectionFactor(float factor)
 {
 	b2Assert(b2IsValid(factor) && 0.0f <= factor && factor <= 1.0f);
 	m_correctionFactor = factor;
 }
 
-float32 b2MotorJoint::GetCorrectionFactor() const
+float b2MotorJoint::GetCorrectionFactor() const
 {
 	return m_correctionFactor;
 }
@@ -277,7 +278,7 @@ const b2Vec2& b2MotorJoint::GetLinearOffset() const
 	return m_linearOffset;
 }
 
-void b2MotorJoint::SetAngularOffset(float32 angularOffset)
+void b2MotorJoint::SetAngularOffset(float angularOffset)
 {
 	if (angularOffset != m_angularOffset)
 	{
@@ -287,7 +288,7 @@ void b2MotorJoint::SetAngularOffset(float32 angularOffset)
 	}
 }
 
-float32 b2MotorJoint::GetAngularOffset() const
+float b2MotorJoint::GetAngularOffset() const
 {
 	return m_angularOffset;
 }
@@ -297,14 +298,14 @@ void b2MotorJoint::Dump()
 	int32 indexA = m_bodyA->GetIslandIndex(0);
 	int32 indexB = m_bodyB->GetIslandIndex(0);
 
-	b2Log("  b2MotorJointDef jd;\n");
-	b2Log("  jd.bodyA = bodies[%d];\n", indexA);
-	b2Log("  jd.bodyB = bodies[%d];\n", indexB);
-	b2Log("  jd.collideConnected = bool(%d);\n", m_collideConnected);
-	b2Log("  jd.linearOffset.Set(%.15lef, %.15lef);\n", m_linearOffset.x, m_linearOffset.y);
-	b2Log("  jd.angularOffset = %.15lef;\n", m_angularOffset);
-	b2Log("  jd.maxForce = %.15lef;\n", m_maxForce);
-	b2Log("  jd.maxTorque = %.15lef;\n", m_maxTorque);
-	b2Log("  jd.correctionFactor = %.15lef;\n", m_correctionFactor);
-	b2Log("  joints[%d] = m_world->CreateJoint(&jd);\n", m_index);
+	b2Dump("  b2MotorJointDef jd;\n");
+	b2Dump("  jd.bodyA = bodies[%d];\n", indexA);
+	b2Dump("  jd.bodyB = bodies[%d];\n", indexB);
+	b2Dump("  jd.collideConnected = bool(%d);\n", m_collideConnected);
+	b2Dump("  jd.linearOffset.Set(%.9g, %.9g);\n", m_linearOffset.x, m_linearOffset.y);
+	b2Dump("  jd.angularOffset = %.9g;\n", m_angularOffset);
+	b2Dump("  jd.maxForce = %.9g;\n", m_maxForce);
+	b2Dump("  jd.maxTorque = %.9g;\n", m_maxTorque);
+	b2Dump("  jd.correctionFactor = %.9g;\n", m_correctionFactor);
+	b2Dump("  joints[%d] = m_world->CreateJoint(&jd);\n", m_index);
 }

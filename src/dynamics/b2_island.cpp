@@ -1,32 +1,36 @@
-/*
-* Copyright (c) 2006-2011 Erin Catto http://www.box2d.org
-* Copyright (c) 2015 Justin Hoffman https://github.com/jhoffman0x/Box2D-MT
-*
-* This software is provided 'as-is', without any express or implied
-* warranty.  In no event will the authors be held liable for any damages
-* arising from the use of this software.
-* Permission is granted to anyone to use this software for any purpose,
-* including commercial applications, and to alter it and redistribute it
-* freely, subject to the following restrictions:
-* 1. The origin of this software must not be misrepresented; you must not
-* claim that you wrote the original software. If you use this software
-* in a product, an acknowledgment in the product documentation would be
-* appreciated but is not required.
-* 2. Altered source versions must be plainly marked as such, and must not be
-* misrepresented as being the original software.
-* 3. This notice may not be removed or altered from any source distribution.
-*/
+// MIT License
 
-#include "Box2D/Collision/b2Distance.h"
-#include "Box2D/Dynamics/b2Island.h"
-#include "Box2D/Dynamics/b2Body.h"
-#include "Box2D/Dynamics/b2Fixture.h"
-#include "Box2D/Dynamics/b2World.h"
-#include "Box2D/Dynamics/Contacts/b2Contact.h"
-#include "Box2D/Dynamics/Contacts/b2ContactSolver.h"
-#include "Box2D/Dynamics/Joints/b2Joint.h"
-#include "Box2D/Common/b2StackAllocator.h"
-#include "Box2D/Common/b2Timer.h"
+// Copyright (c) 2019 Erin Catto
+
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
+#include "box2d/b2_body.h"
+#include "box2d/b2_contact.h"
+#include "box2d/b2_distance.h"
+#include "box2d/b2_fixture.h"
+#include "box2d/b2_joint.h"
+#include "box2d/b2_stack_allocator.h"
+#include "box2d/b2_timer.h"
+#include "box2d/b2_world.h"
+
+#include "b2_island.h"
+#include "dynamics/b2_contact_solver.h"
 
 /*
 Position Correction Notes
@@ -127,13 +131,13 @@ stored in a single array since multiple arrays lead to multiple misses.
 2D Rotation
 
 R = [cos(theta) -sin(theta)]
-[sin(theta) cos(theta) ]
+    [sin(theta) cos(theta) ]
 
 thetaDot = omega
 
 Let q1 = cos(theta), q2 = sin(theta).
 R = [q1 -q2]
-[q2  q1]
+    [q2  q1]
 
 q1Dot = -thetaDot * q2
 q2Dot = thetaDot * q1
@@ -186,7 +190,7 @@ void b2Island::Solve(b2Profile* profile, const b2TimeStep& step, const b2Vec2& g
 {
 	b2Timer timer;
 
-	float32 h = step.dt;
+	float h = step.dt;
 
 	// Integrate velocities and apply damping. Initialize the body state.
 	for (int32 i = 0; i < m_bodyCount; ++i)
@@ -195,21 +199,18 @@ void b2Island::Solve(b2Profile* profile, const b2TimeStep& step, const b2Vec2& g
 		b->SetIslandIndex(i, threadId);
 
 		b2Vec2 c = b->m_sweep.c;
-		float32 a = b->m_sweep.a;
+		float a = b->m_sweep.a;
 		b2Vec2 v = b->m_linearVelocity;
-		float32 w = b->m_angularVelocity;
+		float w = b->m_angularVelocity;
 
 		// Store positions for continuous collision.
-		if (b->GetType() != b2_staticBody)
-		{
-			b->m_sweep.c0 = b->m_sweep.c;
-			b->m_sweep.a0 = b->m_sweep.a;
-		}
+		b->m_sweep.c0 = b->m_sweep.c;
+		b->m_sweep.a0 = b->m_sweep.a;
 
-		if (b->GetType() == b2_dynamicBody)
+		if (b->m_type == b2_dynamicBody)
 		{
 			// Integrate velocities.
-			v += h * (b->m_gravityScale * gravity + b->m_invMass * b->m_force);
+			v += h * b->m_invMass * (b->m_gravityScale * b->m_mass * gravity + b->m_force);
 			w += h * b->m_invI * b->m_torque;
 
 			// Apply damping.
@@ -246,7 +247,7 @@ void b2Island::Solve(b2Profile* profile, const b2TimeStep& step, const b2Vec2& g
 	contactSolverDef.threadId = threadId;
 	contactSolverDef.positions = m_positions;
 	contactSolverDef.velocities = m_velocities;
-	contactSolverDef.allocator = allocator;
+	contactSolverDef.allocator = m_allocator;
 
 	b2ContactSolver contactSolver(&contactSolverDef);
 	contactSolver.InitializeVelocityConstraints();
@@ -255,13 +256,13 @@ void b2Island::Solve(b2Profile* profile, const b2TimeStep& step, const b2Vec2& g
 	{
 		contactSolver.WarmStart();
 	}
-
+	
 	for (int32 i = 0; i < m_jointCount; ++i)
 	{
 		m_joints[i]->InitVelocityConstraints(solverData);
 	}
 
-	profile->solveInit += timer.GetMilliseconds();
+	profile->solveInit = timer.GetMilliseconds();
 
 	// Solve velocity constraints
 	timer.Reset();
@@ -277,28 +278,28 @@ void b2Island::Solve(b2Profile* profile, const b2TimeStep& step, const b2Vec2& g
 
 	// Store impulses for warm starting
 	contactSolver.StoreImpulses();
-	profile->solveVelocity += timer.GetMilliseconds();
+	profile->solveVelocity = timer.GetMilliseconds();
 
 	// Integrate positions
 	for (int32 i = 0; i < m_bodyCount; ++i)
 	{
 		b2Vec2 c = m_positions[i].c;
-		float32 a = m_positions[i].a;
+		float a = m_positions[i].a;
 		b2Vec2 v = m_velocities[i].v;
-		float32 w = m_velocities[i].w;
+		float w = m_velocities[i].w;
 
 		// Check for large velocities
 		b2Vec2 translation = h * v;
 		if (b2Dot(translation, translation) > b2_maxTranslationSquared)
 		{
-			float32 ratio = b2_maxTranslation / translation.Length();
+			float ratio = b2_maxTranslation / translation.Length();
 			v *= ratio;
 		}
 
-		float32 rotation = h * w;
+		float rotation = h * w;
 		if (rotation * rotation > b2_maxRotationSquared)
 		{
-			float32 ratio = b2_maxRotation / b2Abs(rotation);
+			float ratio = b2_maxRotation / b2Abs(rotation);
 			w *= ratio;
 		}
 
@@ -338,26 +339,23 @@ void b2Island::Solve(b2Profile* profile, const b2TimeStep& step, const b2Vec2& g
 	for (int32 i = 0; i < m_bodyCount; ++i)
 	{
 		b2Body* body = m_bodies[i];
-		if (body->GetType() != b2_staticBody)
-		{
-			body->m_sweep.c = m_positions[i].c;
-			body->m_sweep.a = m_positions[i].a;
-			body->m_linearVelocity = m_velocities[i].v;
-			body->m_angularVelocity = m_velocities[i].w;
-			body->SynchronizeTransform();
-		}
+		body->m_sweep.c = m_positions[i].c;
+		body->m_sweep.a = m_positions[i].a;
+		body->m_linearVelocity = m_velocities[i].v;
+		body->m_angularVelocity = m_velocities[i].w;
+		body->SynchronizeTransform();
 	}
 
-	profile->solvePosition += timer.GetMilliseconds();
+	profile->solvePosition = timer.GetMilliseconds();
 
 	Report<false>(contactSolver.m_velocityConstraints, listener, threadId, &postSolves);
 
 	if (allowSleep)
 	{
-		float32 minSleepTime = b2_maxFloat;
+		float minSleepTime = b2_maxFloat;
 
-		const float32 linTolSqr = b2_linearSleepTolerance * b2_linearSleepTolerance;
-		const float32 angTolSqr = b2_angularSleepTolerance * b2_angularSleepTolerance;
+		const float linTolSqr = b2_linearSleepTolerance * b2_linearSleepTolerance;
+		const float angTolSqr = b2_angularSleepTolerance * b2_angularSleepTolerance;
 
 		for (int32 i = 0; i < m_bodyCount; ++i)
 		{
@@ -386,10 +384,7 @@ void b2Island::Solve(b2Profile* profile, const b2TimeStep& step, const b2Vec2& g
 			for (int32 i = 0; i < m_bodyCount; ++i)
 			{
 				b2Body* b = m_bodies[i];
-				if (b->GetType() != b2_staticBody)
-				{
-					b->SetAwake(false);
-				}
+				b->SetAwake(false);
 			}
 		}
 	}
@@ -483,28 +478,28 @@ void b2Island::SolveTOI(const b2TimeStep& subStep, int32 toiIndexA, int32 toiInd
 	// Don't store the TOI contact forces for warm starting
 	// because they can be quite large.
 
-	float32 h = subStep.dt;
+	float h = subStep.dt;
 
 	// Integrate positions
 	for (int32 i = 0; i < m_bodyCount; ++i)
 	{
 		b2Vec2 c = m_positions[i].c;
-		float32 a = m_positions[i].a;
+		float a = m_positions[i].a;
 		b2Vec2 v = m_velocities[i].v;
-		float32 w = m_velocities[i].w;
+		float w = m_velocities[i].w;
 
 		// Check for large velocities
 		b2Vec2 translation = h * v;
 		if (b2Dot(translation, translation) > b2_maxTranslationSquared)
 		{
-			float32 ratio = b2_maxTranslation / translation.Length();
+			float ratio = b2_maxTranslation / translation.Length();
 			v *= ratio;
 		}
 
-		float32 rotation = h * w;
+		float rotation = h * w;
 		if (rotation * rotation > b2_maxRotationSquared)
 		{
-			float32 ratio = b2_maxRotation / b2Abs(rotation);
+			float ratio = b2_maxRotation / b2Abs(rotation);
 			w *= ratio;
 		}
 
@@ -543,7 +538,7 @@ void b2Island::Report(const b2ContactVelocityConstraint* constraints, b2ContactL
 		b2Contact* c = m_contacts[i];
 
 		const b2ContactVelocityConstraint* vc = constraints + i;
-
+		
 		b2ContactImpulse impulse;
 		impulse.count = vc->pointCount;
 		for (int32 j = 0; j < vc->pointCount; ++j)

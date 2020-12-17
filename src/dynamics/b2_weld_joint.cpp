@@ -1,25 +1,28 @@
-/*
-* Copyright (c) 2006-2011 Erin Catto http://www.box2d.org
-* Copyright (c) 2015 Justin Hoffman https://github.com/jhoffman0x/Box2D-MT
-*
-* This software is provided 'as-is', without any express or implied
-* warranty.  In no event will the authors be held liable for any damages
-* arising from the use of this software.
-* Permission is granted to anyone to use this software for any purpose,
-* including commercial applications, and to alter it and redistribute it
-* freely, subject to the following restrictions:
-* 1. The origin of this software must not be misrepresented; you must not
-* claim that you wrote the original software. If you use this software
-* in a product, an acknowledgment in the product documentation would be
-* appreciated but is not required.
-* 2. Altered source versions must be plainly marked as such, and must not be
-* misrepresented as being the original software.
-* 3. This notice may not be removed or altered from any source distribution.
-*/
+// MIT License
 
-#include "Box2D/Dynamics/Joints/b2WeldJoint.h"
-#include "Box2D/Dynamics/b2Body.h"
-#include "Box2D/Dynamics/b2TimeStep.h"
+// Copyright (c) 2019 Erin Catto
+
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
+#include "box2d/b2_body.h"
+#include "box2d/b2_time_step.h"
+#include "box2d/b2_weld_joint.h"
 
 // Point-to-point constraint
 // C = p2 - p1
@@ -50,8 +53,8 @@ b2WeldJoint::b2WeldJoint(const b2WeldJointDef* def)
 	m_localAnchorA = def->localAnchorA;
 	m_localAnchorB = def->localAnchorB;
 	m_referenceAngle = def->referenceAngle;
-	m_frequencyHz = def->frequencyHz;
-	m_dampingRatio = def->dampingRatio;
+	m_stiffness = def->stiffness;
+	m_damping = def->damping;
 
 	m_impulse.SetZero();
 }
@@ -67,13 +70,13 @@ void b2WeldJoint::InitVelocityConstraints(const b2SolverData& data)
 	m_invIA = m_bodyA->m_invI;
 	m_invIB = m_bodyB->m_invI;
 
-	float32 aA = data.positions[m_indexA].a;
+	float aA = data.positions[m_indexA].a;
 	b2Vec2 vA = data.velocities[m_indexA].v;
-	float32 wA = data.velocities[m_indexA].w;
+	float wA = data.velocities[m_indexA].w;
 
-	float32 aB = data.positions[m_indexB].a;
+	float aB = data.positions[m_indexB].a;
 	b2Vec2 vB = data.velocities[m_indexB].v;
-	float32 wB = data.velocities[m_indexB].w;
+	float wB = data.velocities[m_indexB].w;
 
 	b2Rot qA(aA), qB(aB);
 
@@ -89,8 +92,8 @@ void b2WeldJoint::InitVelocityConstraints(const b2SolverData& data)
 	//     [  -r1y*iA*r1x-r2y*iB*r2x, mA+r1x^2*iA+mB+r2x^2*iB,           r1x*iA+r2x*iB]
 	//     [          -r1y*iA-r2y*iB,           r1x*iA+r2x*iB,                   iA+iB]
 
-	float32 mA = m_invMassA, mB = m_invMassB;
-	float32 iA = m_invIA, iB = m_invIB;
+	float mA = m_invMassA, mB = m_invMassB;
+	float iA = m_invIA, iB = m_invIB;
 
 	b2Mat33 K;
 	K.ex.x = mA + mB + m_rA.y * m_rA.y * iA + m_rB.y * m_rB.y * iB;
@@ -103,26 +106,22 @@ void b2WeldJoint::InitVelocityConstraints(const b2SolverData& data)
 	K.ey.z = K.ez.y;
 	K.ez.z = iA + iB;
 
-	if (m_frequencyHz > 0.0f)
+	if (m_stiffness > 0.0f)
 	{
 		K.GetInverse22(&m_mass);
 
-		float32 invM = iA + iB;
-		float32 m = invM > 0.0f ? 1.0f / invM : 0.0f;
+		float invM = iA + iB;
 
-		float32 C = aB - aA - m_referenceAngle;
-
-		// Frequency
-		float32 omega = 2.0f * b2_pi * m_frequencyHz;
+		float C = aB - aA - m_referenceAngle;
 
 		// Damping coefficient
-		float32 d = 2.0f * m * m_dampingRatio * omega;
+		float d = m_damping;
 
 		// Spring stiffness
-		float32 k = m * omega * omega;
+		float k = m_stiffness;
 
 		// magic formulas
-		float32 h = data.step.dt;
+		float h = data.step.dt;
 		m_gamma = h * (d + h * k);
 		m_gamma = m_gamma != 0.0f ? 1.0f / m_gamma : 0.0f;
 		m_bias = C * h * k * m_gamma;
@@ -170,18 +169,18 @@ void b2WeldJoint::InitVelocityConstraints(const b2SolverData& data)
 void b2WeldJoint::SolveVelocityConstraints(const b2SolverData& data)
 {
 	b2Vec2 vA = data.velocities[m_indexA].v;
-	float32 wA = data.velocities[m_indexA].w;
+	float wA = data.velocities[m_indexA].w;
 	b2Vec2 vB = data.velocities[m_indexB].v;
-	float32 wB = data.velocities[m_indexB].w;
+	float wB = data.velocities[m_indexB].w;
 
-	float32 mA = m_invMassA, mB = m_invMassB;
-	float32 iA = m_invIA, iB = m_invIB;
+	float mA = m_invMassA, mB = m_invMassB;
+	float iA = m_invIA, iB = m_invIB;
 
-	if (m_frequencyHz > 0.0f)
+	if (m_stiffness > 0.0f)
 	{
-		float32 Cdot2 = wB - wA;
+		float Cdot2 = wB - wA;
 
-		float32 impulse2 = -m_mass.ez.z * (Cdot2 + m_bias + m_gamma * m_impulse.z);
+		float impulse2 = -m_mass.ez.z * (Cdot2 + m_bias + m_gamma * m_impulse.z);
 		m_impulse.z += impulse2;
 
 		wA -= iA * impulse2;
@@ -204,7 +203,7 @@ void b2WeldJoint::SolveVelocityConstraints(const b2SolverData& data)
 	else
 	{
 		b2Vec2 Cdot1 = vB + b2Cross(wB, m_rB) - vA - b2Cross(wA, m_rA);
-		float32 Cdot2 = wB - wA;
+		float Cdot2 = wB - wA;
 		b2Vec3 Cdot(Cdot1.x, Cdot1.y, Cdot2);
 
 		b2Vec3 impulse = -b2Mul(m_mass, Cdot);
@@ -228,19 +227,19 @@ void b2WeldJoint::SolveVelocityConstraints(const b2SolverData& data)
 bool b2WeldJoint::SolvePositionConstraints(const b2SolverData& data)
 {
 	b2Vec2 cA = data.positions[m_indexA].c;
-	float32 aA = data.positions[m_indexA].a;
+	float aA = data.positions[m_indexA].a;
 	b2Vec2 cB = data.positions[m_indexB].c;
-	float32 aB = data.positions[m_indexB].a;
+	float aB = data.positions[m_indexB].a;
 
 	b2Rot qA(aA), qB(aB);
 
-	float32 mA = m_invMassA, mB = m_invMassB;
-	float32 iA = m_invIA, iB = m_invIB;
+	float mA = m_invMassA, mB = m_invMassB;
+	float iA = m_invIA, iB = m_invIB;
 
 	b2Vec2 rA = b2Mul(qA, m_localAnchorA - m_localCenterA);
 	b2Vec2 rB = b2Mul(qB, m_localAnchorB - m_localCenterB);
 
-	float32 positionError, angularError;
+	float positionError, angularError;
 
 	b2Mat33 K;
 	K.ex.x = mA + mB + rA.y * rA.y * iA + rB.y * rB.y * iB;
@@ -253,7 +252,7 @@ bool b2WeldJoint::SolvePositionConstraints(const b2SolverData& data)
 	K.ey.z = K.ez.y;
 	K.ez.z = iA + iB;
 
-	if (m_frequencyHz > 0.0f)
+	if (m_stiffness > 0.0f)
 	{
 		b2Vec2 C1 =  cB + rB - cA - rA;
 
@@ -271,13 +270,13 @@ bool b2WeldJoint::SolvePositionConstraints(const b2SolverData& data)
 	else
 	{
 		b2Vec2 C1 =  cB + rB - cA - rA;
-		float32 C2 = aB - aA - m_referenceAngle;
+		float C2 = aB - aA - m_referenceAngle;
 
 		positionError = C1.Length();
 		angularError = b2Abs(C2);
 
 		b2Vec3 C(C1.x, C1.y, C2);
-
+	
 		b2Vec3 impulse;
 		if (K.ez.z > 0.0f)
 		{
@@ -316,13 +315,13 @@ b2Vec2 b2WeldJoint::GetAnchorB() const
 	return m_bodyB->GetWorldPoint(m_localAnchorB);
 }
 
-b2Vec2 b2WeldJoint::GetReactionForce(float32 inv_dt) const
+b2Vec2 b2WeldJoint::GetReactionForce(float inv_dt) const
 {
 	b2Vec2 P(m_impulse.x, m_impulse.y);
 	return inv_dt * P;
 }
 
-float32 b2WeldJoint::GetReactionTorque(float32 inv_dt) const
+float b2WeldJoint::GetReactionTorque(float inv_dt) const
 {
 	return inv_dt * m_impulse.z;
 }
@@ -332,14 +331,14 @@ void b2WeldJoint::Dump()
 	int32 indexA = m_bodyA->GetIslandIndex(0);
 	int32 indexB = m_bodyB->GetIslandIndex(0);
 
-	b2Log("  b2WeldJointDef jd;\n");
-	b2Log("  jd.bodyA = bodies[%d];\n", indexA);
-	b2Log("  jd.bodyB = bodies[%d];\n", indexB);
-	b2Log("  jd.collideConnected = bool(%d);\n", m_collideConnected);
-	b2Log("  jd.localAnchorA.Set(%.15lef, %.15lef);\n", m_localAnchorA.x, m_localAnchorA.y);
-	b2Log("  jd.localAnchorB.Set(%.15lef, %.15lef);\n", m_localAnchorB.x, m_localAnchorB.y);
-	b2Log("  jd.referenceAngle = %.15lef;\n", m_referenceAngle);
-	b2Log("  jd.frequencyHz = %.15lef;\n", m_frequencyHz);
-	b2Log("  jd.dampingRatio = %.15lef;\n", m_dampingRatio);
-	b2Log("  joints[%d] = m_world->CreateJoint(&jd);\n", m_index);
+	b2Dump("  b2WeldJointDef jd;\n");
+	b2Dump("  jd.bodyA = bodies[%d];\n", indexA);
+	b2Dump("  jd.bodyB = bodies[%d];\n", indexB);
+	b2Dump("  jd.collideConnected = bool(%d);\n", m_collideConnected);
+	b2Dump("  jd.localAnchorA.Set(%.9g, %.9g);\n", m_localAnchorA.x, m_localAnchorA.y);
+	b2Dump("  jd.localAnchorB.Set(%.9g, %.9g);\n", m_localAnchorB.x, m_localAnchorB.y);
+	b2Dump("  jd.referenceAngle = %.9g;\n", m_referenceAngle);
+	b2Dump("  jd.stiffness = %.9g;\n", m_stiffness);
+	b2Dump("  jd.damping = %.9g;\n", m_damping);
+	b2Dump("  joints[%d] = m_world->CreateJoint(&jd);\n", m_index);
 }

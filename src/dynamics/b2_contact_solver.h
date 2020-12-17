@@ -1,27 +1,31 @@
-/*
-* Copyright (c) 2006-2009 Erin Catto http://www.box2d.org
-*
-* This software is provided 'as-is', without any express or implied
-* warranty.  In no event will the authors be held liable for any damages
-* arising from the use of this software.
-* Permission is granted to anyone to use this software for any purpose,
-* including commercial applications, and to alter it and redistribute it
-* freely, subject to the following restrictions:
-* 1. The origin of this software must not be misrepresented; you must not
-* claim that you wrote the original software. If you use this software
-* in a product, an acknowledgment in the product documentation would be
-* appreciated but is not required.
-* 2. Altered source versions must be plainly marked as such, and must not be
-* misrepresented as being the original software.
-* 3. This notice may not be removed or altered from any source distribution.
-*/
+// MIT License
+
+// Copyright (c) 2019 Erin Catto
+
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
 
 #ifndef B2_CONTACT_SOLVER_H
 #define B2_CONTACT_SOLVER_H
 
-#include "Box2D/Common/b2Math.h"
-#include "Box2D/Collision/b2Collision.h"
-#include "Box2D/Dynamics/b2TimeStep.h"
+#include "box2d/b2_collision.h"
+#include "box2d/b2_math.h"
+#include "box2d/b2_time_step.h"
 
 class b2Contact;
 class b2Body;
@@ -32,11 +36,11 @@ struct b2VelocityConstraintPoint
 {
 	b2Vec2 rA;
 	b2Vec2 rB;
-	float32 normalImpulse;
-	float32 tangentImpulse;
-	float32 normalMass;
-	float32 tangentMass;
-	float32 velocityBias;
+	float normalImpulse;
+	float tangentImpulse;
+	float normalMass;
+	float tangentMass;
+	float velocityBias;
 };
 
 struct b2ContactVelocityConstraint
@@ -47,11 +51,12 @@ struct b2ContactVelocityConstraint
 	b2Mat22 K;
 	int32 indexA;
 	int32 indexB;
-	float32 invMassA, invMassB;
-	float32 invIA, invIB;
-	float32 friction;
-	float32 restitution;
-	float32 tangentSpeed;
+	float invMassA, invMassB;
+	float invIA, invIB;
+	float friction;
+	float restitution;
+	float threshold;
+	float tangentSpeed;
 	int32 pointCount;
 	int32 contactIndex;
 };

@@ -1,39 +1,91 @@
-/*
-* Copyright (c) 2006-2007 Erin Catto http://www.box2d.org
-* Copyright (c) 2015 Justin Hoffman https://github.com/jhoffman0x/Box2D-MT
-*
-* This software is provided 'as-is', without any express or implied
-* warranty.  In no event will the authors be held liable for any damages
-* arising from the use of this software.
-* Permission is granted to anyone to use this software for any purpose,
-* including commercial applications, and to alter it and redistribute it
-* freely, subject to the following restrictions:
-* 1. The origin of this software must not be misrepresented; you must not
-* claim that you wrote the original software. If you use this software
-* in a product, an acknowledgment in the product documentation would be
-* appreciated but is not required.
-* 2. Altered source versions must be plainly marked as such, and must not be
-* misrepresented as being the original software.
-* 3. This notice may not be removed or altered from any source distribution.
-*/
+// MIT License
 
-#include "Box2D/Dynamics/Joints/b2Joint.h"
-#include "Box2D/Dynamics/Joints/b2DistanceJoint.h"
-#include "Box2D/Dynamics/Joints/b2WheelJoint.h"
-#include "Box2D/Dynamics/Joints/b2MouseJoint.h"
-#include "Box2D/Dynamics/Joints/b2RevoluteJoint.h"
-#include "Box2D/Dynamics/Joints/b2PrismaticJoint.h"
-#include "Box2D/Dynamics/Joints/b2PulleyJoint.h"
-#include "Box2D/Dynamics/Joints/b2GearJoint.h"
-#include "Box2D/Dynamics/Joints/b2WeldJoint.h"
-#include "Box2D/Dynamics/Joints/b2FrictionJoint.h"
-#include "Box2D/Dynamics/Joints/b2RopeJoint.h"
-#include "Box2D/Dynamics/Joints/b2MotorJoint.h"
-#include "Box2D/Dynamics/b2Body.h"
-#include "Box2D/Dynamics/b2World.h"
-#include "Box2D/Common/b2BlockAllocator.h"
+// Copyright (c) 2019 Erin Catto
+
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
+#include "box2d/b2_block_allocator.h"
+#include "box2d/b2_body.h"
+#include "box2d/b2_distance_joint.h"
+#include "box2d/b2_draw.h"
+#include "box2d/b2_friction_joint.h"
+#include "box2d/b2_gear_joint.h"
+#include "box2d/b2_motor_joint.h"
+#include "box2d/b2_mouse_joint.h"
+#include "box2d/b2_prismatic_joint.h"
+#include "box2d/b2_pulley_joint.h"
+#include "box2d/b2_revolute_joint.h"
+#include "box2d/b2_weld_joint.h"
+#include "box2d/b2_wheel_joint.h"
+#include "box2d/b2_world.h"
 
 #include <new>
+
+void b2LinearStiffness(float& stiffness, float& damping,
+	float frequencyHertz, float dampingRatio,
+	const b2Body* bodyA, const b2Body* bodyB)
+{
+	float massA = bodyA->GetMass();
+	float massB = bodyB->GetMass();
+	float mass;
+	if (massA > 0.0f && massB > 0.0f)
+	{
+		mass = massA * massB / (massA + massB);
+	}
+	else if (massA > 0.0f)
+	{
+		mass = massA;
+	}
+	else
+	{
+		mass = massB;
+	}
+
+	float omega = 2.0f * b2_pi * frequencyHertz;
+	stiffness = mass * omega * omega;
+	damping = 2.0f * mass * dampingRatio * omega;
+}
+
+void b2AngularStiffness(float& stiffness, float& damping,
+	float frequencyHertz, float dampingRatio,
+	const b2Body* bodyA, const b2Body* bodyB)
+{
+	float IA = bodyA->GetInertia();
+	float IB = bodyB->GetInertia();
+	float I;
+	if (IA > 0.0f && IB > 0.0f)
+	{
+		I = IA * IB / (IA + IB);
+	}
+	else if (IA > 0.0f)
+	{
+		I = IA;
+	}
+	else
+	{
+		I = IB;
+	}
+
+	float omega = 2.0f * b2_pi * frequencyHertz;
+	stiffness = I * omega * omega;
+	damping = 2.0f * I * dampingRatio * omega;
+}
 
 b2Joint* b2Joint::Create(const b2JointDef* def, b2BlockAllocator* allocator)
 {
@@ -104,13 +156,6 @@ b2Joint* b2Joint::Create(const b2JointDef* def, b2BlockAllocator* allocator)
 		}
 		break;
 
-	case e_ropeJoint:
-		{
-			void* mem = allocator->Allocate(sizeof(b2RopeJoint));
-			joint = new (mem) b2RopeJoint(static_cast<const b2RopeJointDef*>(def));
-		}
-		break;
-
 	case e_motorJoint:
 		{
 			void* mem = allocator->Allocate(sizeof(b2MotorJoint));
@@ -167,10 +212,6 @@ void b2Joint::Destroy(b2Joint* joint, b2BlockAllocator* allocator)
 		allocator->Free(joint, sizeof(b2FrictionJoint));
 		break;
 
-	case e_ropeJoint:
-		allocator->Free(joint, sizeof(b2RopeJoint));
-		break;
-
 	case e_motorJoint:
 		allocator->Free(joint, sizeof(b2MotorJoint));
 		break;
@@ -206,7 +247,55 @@ b2Joint::b2Joint(const b2JointDef* def)
 	m_edgeB.next = nullptr;
 }
 
-bool b2Joint::IsActive() const
+bool b2Joint::IsEnabled() const
 {
-	return m_bodyA->IsActive() && m_bodyB->IsActive();
+	return m_bodyA->IsEnabled() && m_bodyB->IsEnabled();
+}
+
+void b2Joint::Draw(b2Draw* draw) const
+{
+	const b2Transform& xf1 = m_bodyA->GetTransform();
+	const b2Transform& xf2 = m_bodyB->GetTransform();
+	b2Vec2 x1 = xf1.p;
+	b2Vec2 x2 = xf2.p;
+	b2Vec2 p1 = GetAnchorA();
+	b2Vec2 p2 = GetAnchorB();
+
+	b2Color color(0.5f, 0.8f, 0.8f);
+
+	switch (m_type)
+	{
+	case e_distanceJoint:
+		draw->DrawSegment(p1, p2, color);
+		break;
+
+	case e_pulleyJoint:
+	{
+		b2PulleyJoint* pulley = (b2PulleyJoint*)this;
+		b2Vec2 s1 = pulley->GetGroundAnchorA();
+		b2Vec2 s2 = pulley->GetGroundAnchorB();
+		draw->DrawSegment(s1, p1, color);
+		draw->DrawSegment(s2, p2, color);
+		draw->DrawSegment(s1, s2, color);
+	}
+	break;
+
+	case e_mouseJoint:
+	{
+		b2Color c;
+		c.Set(0.0f, 1.0f, 0.0f);
+		draw->DrawPoint(p1, 4.0f, c);
+		draw->DrawPoint(p2, 4.0f, c);
+
+		c.Set(0.8f, 0.8f, 0.8f);
+		draw->DrawSegment(p1, p2, c);
+
+	}
+	break;
+
+	default:
+		draw->DrawSegment(x1, p1, color);
+		draw->DrawSegment(p1, p2, color);
+		draw->DrawSegment(x2, p2, color);
+	}
 }
